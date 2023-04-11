@@ -37,6 +37,9 @@ import string
 import hashlib
 from datetime import datetime, timedelta
 from slave_api.ssh import create_ssh_account, delete_ssh_account
+from financial_api.user import create_user_if_not_exist, get_balance
+from financial_api.transfer import transfer
+
 
 router = APIRouter(prefix='/ssh', tags=['ssh'])
 
@@ -62,6 +65,7 @@ def new(request: NewSsh, db: Session=Depends(get_db)):
             }
         
         user = db_user.create_user(UserRegisterForDataBase(**data), db)
+        create_user_if_not_exist(user.user_id)
 
     interface = db_ssh_interface.get_interface_by_id(request.interface_id, db, status= Status.ENABLE)
 
@@ -70,7 +74,24 @@ def new(request: NewSsh, db: Session=Depends(get_db)):
     
     server = db_server.get_server_by_ip(interface.server_ip, db, status= Status.ENABLE)
     if server.ssh_accounts_number >= server.max_users:
-        raise HTTPException(status_code=403, detail={'message':'this server is full', 'internal_code': 1413})
+        raise HTTPException(status_code= 403, detail={'message':'this server is full', 'internal_code': 1413})
+
+
+    status_code, resp = get_balance(user.user_id)
+
+    if status_code != 200:
+        raise HTTPException(status_code=status_code, detail= {'message': resp.json()['detail']['message'], 'internal_code': resp.json()['detail']['internal_code']} )
+
+    balance = resp.json()['balance'] 
+
+    if balance < interface.price :
+        raise HTTPException(status_code=403, detail= {'message': 'not enough balance', 'internal_code': 1412} )
+
+    status_code, resp = transfer(user.user_id, 1, interface.price)
+
+    if status_code != 200:
+        raise HTTPException(status_code=status_code, detail= {'message': resp.json()['detail']['message'], 'internal_code': resp.json()['detail']['internal_code']} )
+
 
     password = generate_password()
     while True:
@@ -124,12 +145,29 @@ def renewal(request: RenewalSsh, token: str= Depends(get_auth), db: Session=Depe
     if service == None:
         raise HTTPException(status_code=403, detail={'message':'the service_id not exists', 'internal_code': 1403})
     
-    # calcute financial
+
+    status_code, resp = get_balance(service.user_id)
+
+    if status_code != 200:
+        raise HTTPException(status_code=status_code, detail= {'message': resp.json()['detail']['message'], 'internal_code': resp.json()['detail']['internal_code']} )
+
+    balance = resp.json()['balance'] 
+
+    if balance < interface.price :
+        raise HTTPException(status_code=403, detail= {'message': 'not enough balance', 'internal_code': 1412} )
+    
+    interface = db_ssh_interface.get_interface_by_id(service.interface_id, db, status= Status.ENABLE)
+    status_code, resp = transfer(service.user_id, 1, interface.price)
+    
+    if status_code != 200:
+        raise HTTPException(status_code=status_code, detail= {'message': resp.json()['detail']['message'], 'internal_code': resp.json()['detail']['internal_code']} )
+
     
     new_expire =  service.expire + timedelta(days=30) 
     db_ssh_service.update_expire(service.service_id, new_expire, db)    
 
     return RenewalSshResponse(**{'service_id': service.service_id, 'expire': new_expire})
+
 
 @router.delete('/delete', response_model= str, responses={403:{'model': HTTPError}})
 def delete(request: DeleteSsh, token: str= Depends(get_auth), db: Session=Depends(get_db)):
