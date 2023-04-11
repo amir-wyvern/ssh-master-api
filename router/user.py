@@ -17,10 +17,11 @@ from db import db_user, db_ssh_service
 from db.database import get_db
 from auth.auth import get_auth
 
+from financial_api.user import get_balance
+
 import random
 import string
 import hashlib
-import requests
 import os
 
 FINANCIAL_URL= os.getenv('FINANCIAL_URL')
@@ -45,7 +46,6 @@ def info(request: UserInfo, token: str= Depends(get_auth), db: Session=Depends(g
     if user == None:
         raise HTTPException(status_code=403, detail= {'message': 'user not fount', 'internal_code': 404} )
 
-        return  
     
     
     services = db_ssh_service.get_service_by_user_id(user.user_id, db, status= Status.ENABLE)
@@ -69,7 +69,11 @@ def info(request: UserInfo, token: str= Depends(get_auth), db: Session=Depends(g
 
         ls_service.append(service_data)
         
-    # balance = get_balance(user.user_id)
+    status_code, resp = get_balance(user.user_id)
+
+    if status_code != 200:
+        raise HTTPException(status_code=status_code, detail= {'message': resp.json()['detail']['message'], 'internal_code': resp.json()['detail']['internal_code']} )
+
     user_info = {
         'tel_id': user.tel_id,
         'phone_number': user.phone_number,
@@ -79,12 +83,7 @@ def info(request: UserInfo, token: str= Depends(get_auth), db: Session=Depends(g
     
     resp = {
         'user': UserRegisterForDataBase(**user_info),
-        'balance': 11,
+        'balance': resp.json()['balance'],
         'services': ls_service
     }
     return UserDisplay(**resp)
-
-
-def get_balance(user_id):
-    
-    requests.get(FINANCIAL_URL + 'user')
