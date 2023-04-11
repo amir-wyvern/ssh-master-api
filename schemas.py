@@ -82,6 +82,17 @@ class UserInfo(BaseModel):
     tel_id: int
 
 
+class DepositRequest(BaseModel):
+
+    tel_id: int
+    value: float
+
+class DepositConfirmation(BaseModel):
+
+    tel_id: int
+    tx_hash: str
+
+
 class RenewalSsh(BaseModel):
 
     service_id: int
