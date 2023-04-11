@@ -65,6 +65,7 @@ def server_fetch(ip: str, token: str= Depends(get_auth), db: Session=Depends(get
 
         return [server]
 
+
 @router.post('/state', response_model= str, responses={403:{'model':HTTPError}})
 def server_status(request: ServerState ,token: str= Depends(get_auth), db: Session=Depends(get_db)):
 
@@ -76,6 +77,7 @@ def server_status(request: ServerState ,token: str= Depends(get_auth), db: Sessi
     db_server.change_status(request.server_ip, request.new_status, db)
 
     return 'Server status successfuly changed!'
+
 
 @router.get('/users', response_model= List[str], responses={403:{'model':HTTPError}})
 def server_users(server_ip: str ,token: str= Depends(get_auth), db: Session=Depends(get_db)):
