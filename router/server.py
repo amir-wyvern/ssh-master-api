@@ -1,37 +1,38 @@
 from fastapi import (
     APIRouter,
     Depends,
+    status,
+    Query,
     HTTPException
 )
 from sqlalchemy.orm.session import Session
 from schemas import (
-    Status,
+    TokenUser,
     NewServer,
     ServerResponse,
     ServerState,
+    FetchStatusServer,
     HTTPError
 )
-from db import (
-    db_server,
-    db_server
-)
-from slave_api.server import get_users
-from auth.auth import get_auth
+from db.models import DbAdmin
 from db.database import get_db
+from db import db_server, db_server
+
+from slave_api.server import get_users
+from auth.auth import get_admin_user
 
 from typing import List
-import requests
 
-router = APIRouter(prefix='/server', tags=['server'])
+router = APIRouter(prefix='/server', tags=['Server'])
 
 
-@router.post('/new', responses={403:{'model':HTTPError}})
-def new(request: NewServer, token: str= Depends(get_auth), db: Session=Depends(get_db)):
+@router.post('/new', responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
+def add_new_server(request: NewServer, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
     server = db_server.get_server_by_ip(request.server_ip, db)
     
     if server != None:
-        raise HTTPException(status_code=403 ,detail={'message': 'server already exists', 'internal_code': 1403})
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'Server already exists', 'internal_code': 2405})
     
     # this section will active after test on a server 
 
@@ -48,64 +49,64 @@ def new(request: NewServer, token: str= Depends(get_auth), db: Session=Depends(g
     
     server = db_server.create_server(request, db)
 
-    return True
+    return 'Server successfully created'
 
-@router.get('/fetch', response_model= List[ServerResponse], responses={404:{'model':HTTPError}})
-def server_fetch(ip: str, token: str= Depends(get_auth), db: Session=Depends(get_db)):
+@router.get('/fetch', response_model= List[ServerResponse], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+def fetch_server_or_servers(ip: str = None, mode: FetchStatusServer= FetchStatusServer.ALL, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-    if ip == 'all':
+    if mode == FetchStatusServer.ALL:
         server = db_server.get_all_server(db)
         return server
     
     else:
-        server = db_server.get_server_by_ip(ip , db, status= Status.ENABLE)
+        server = db_server.get_server_by_ip(ip , db)
         
-        if server == None:
-            raise HTTPException(status_code=404, detail={'internal_code':1021, 'message':'server not exists'})
+        if server is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'internal_code':2406, 'message':'Server not exists'})
 
         return [server]
 
 
-@router.post('/state', response_model= str, responses={403:{'model':HTTPError}})
-def server_status(request: ServerState ,token: str= Depends(get_auth), db: Session=Depends(get_db)):
+@router.post('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+def update_server_status(request: ServerState ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(request.server_ip, db)
 
-    if server == None:
-        raise HTTPException(status_code=403 ,detail={'message': 'server not exists', 'internal_code': 1403})
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
     
     db_server.change_status(request.server_ip, request.new_status, db)
 
-    return 'Server status successfuly changed!'
+    return 'Server status successfully changed!'
 
 
-@router.get('/users', response_model= List[str], responses={403:{'model':HTTPError}})
-def server_users(server_ip: str ,token: str= Depends(get_auth), db: Session=Depends(get_db)):
+@router.get('/users', response_model= List[str], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
+def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(server_ip, db)
 
-    if server == None:
-        raise HTTPException(status_code=403 ,detail={'message': 'server not exists', 'internal_code': 1403})
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
     
     status_code, resp = get_users(server_ip)
 
-    if status_code == 1419 :
-        raise HTTPException(status_code=403, detail={'message': f'networt error [{server_ip}]', 'internal_code': 1419})
+    if status_code == 2419 :
+        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': f'networt error [{server_ip}]', 'internal_code': 2419})
         
     if status_code != 200:
-        raise HTTPException(status_code=403 ,detail={'message': f'error in slave server [{resp.content}]', 'internal_code': 1403})
+        raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
 
     return resp.json()
 
 
-@router.post('/max_users', response_model= str, responses={403:{'model':HTTPError}})
-def server_status(request: ServerState ,token: str= Depends(get_auth), db: Session=Depends(get_db)):
+@router.post('/max_users', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+def update_server_max_users(request: ServerState ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(request.server_ip, db)
 
-    if server == None:
-        raise HTTPException(status_code=403 ,detail={'message': 'server not exists', 'internal_code': 1403})
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'message': 'Server not exists', 'internal_code': 2406})
     
     db_server.update_max_user(request.server_ip, request.new_status, db)
 
-    return 'Server max_user successfuly updated!'
+    return 'Server max_user successfully updated!'
