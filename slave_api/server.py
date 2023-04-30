@@ -1,4 +1,4 @@
-from requests import ConnectionError, ConnectTimeout
+from requests import ConnectionError, ConnectTimeout, ReadTimeout
 import requests
 import os
 
@@ -18,8 +18,12 @@ def get_users(server_ip):
 
     except ConnectTimeout:
 
-        return 1419, None
+        return 2419, None
     
     except ConnectionError:
 
-        return 1419, None
+        return 2419, None
+    
+    except ReadTimeout:
+
+        return 2419, None
