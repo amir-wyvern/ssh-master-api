@@ -1,5 +1,5 @@
+from requests.exceptions import ConnectTimeout, ConnectionError, ReadTimeout
 import requests
-from requests.exceptions import ConnectTimeout, ConnectionError
 import os
 
 def header():
@@ -20,16 +20,21 @@ def deposit_request(user_id, value):
             'value': value
         }
 
-        resp = requests.post('http://localhost:8050/depoist/request', json=data, timeout=10)
+        resp = requests.post('http://localhost:8050/deposit/request', json=data, headers= header(), timeout=10)
         return resp.status_code, resp
 
     except ConnectTimeout:
 
-        return 1419, None 
+        return 2419, None 
     
     except ConnectionError:
 
-        return 1419, None
+        return 2419, None
+
+    except ReadTimeout:
+
+        return 2419, None
+
     
 def deposit_confirmation(user_id, tx_hash):
 
@@ -40,16 +45,19 @@ def deposit_confirmation(user_id, tx_hash):
             'user_id': user_id
         }
 
-        resp = requests.post('http://localhost:8050/depoist/confirmation', json=data, timeout=10)
+        resp = requests.post('http://localhost:8050/deposit/confirmation', json=data, headers= header(), timeout=10)
         return resp.status_code, resp
 
     except ConnectTimeout:
 
-        return 1419, None
+        return 2419, None
     
     except ConnectionError:
 
-        return 1419, None
+        return 2419, None
 
+    except ReadTimeout:
+
+        return 2419, None
 
 
