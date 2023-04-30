@@ -1,0 +1,47 @@
+# master
+2404= The user_id could not be found
+2405= Server already exists
+2406= Server not exists
+2407= The agent_id could not be found
+2408= The user_id already has agent role
+2409= Username already exists
+2410= Interface_id not exists
+2411= The Server [{server_ip}] has reached to max users
+1412= Insufficient balance
+2419= Connection Error Or Connection Timeout
+2413= the service_id not exists
+2414= invalid parameter for expire
+2415= The user has already been block
+2416= The user is not blocked
+2417= agent_id is None
+2418= admin can't access to this item
+2419= You are not the agent of this user
+2420= The tel_id is not exist
+2421= Server [{server_ip}] is disable
+2422= Username is already have a service 
+
+# financial
+1003= There was a problem in registering the deposit request
+1019= deposit has locked
+1022= The value already registered
+1023= The number of requests exceeds the limit
+1021= to_user is same with from_user
+1020= transfer has locked
+1403= user has already registered
+1404= user not exists
+1011= Insufficient inventory
+
+
+# slave
+3403= user is not exist
+3404= init config already done!
+3406= user already exist
+3500= error [{Exception}]
+3501= create user exception [{Exception}]
+3502= Failed to set password for user {username} : {message} 
+3503= Failed to delete user {username}: {message}'
+
+
+user_576917 3e24523c
+user_154371 a5ffedac
+user_234748 C##43614
