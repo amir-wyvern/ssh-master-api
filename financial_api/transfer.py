@@ -1,5 +1,5 @@
+from requests.exceptions import ConnectTimeout, ConnectionError, ReadTimeout
 import requests
-from requests.exceptions import ConnectTimeout, ConnectionError
 import os
 
 def header():
@@ -21,17 +21,21 @@ def transfer(from_, to_, value):
             'value': value
         }
 
-        resp = requests.post('http://localhost:8050/transfer/request', json= data, timeout=10)
+        resp = requests.post('http://localhost:8050/transfer/request', json= data, headers= header(),timeout=10)
         
         return resp.status_code, resp
 
     except ConnectTimeout:
 
-        return 1419, None
+        return 2419, None
     
     except ConnectionError:
 
-        return 1419, None
+        return 2419, None
+
+    except ReadTimeout:
+
+        return 2419, None
 
 
 
