@@ -1,5 +1,5 @@
+from requests.exceptions import ConnectTimeout, ConnectionError, ReadTimeout
 import requests
-from requests.exceptions import ConnectTimeout, ConnectionError
 import os
 
 def header():
@@ -17,16 +17,19 @@ def create_ssh_account(server_ip, username, password):
         'password': password
     }
     try:
-        resp = requests.post(url=f'http://{server_ip}:8090/ssh/create', json= data, headers= header(), timeout=10)
+        resp = requests.post(url=f'http://{server_ip}:8090/ssh/create', json= data, headers= header(), timeout=20)
+        # print('----' ,resp, resp.content)
         return resp.status_code, resp
     
     except ConnectTimeout:
-
-        return 1419, None
+        return 2419, None
     
     except ConnectionError:
+        return 2419, None
 
-        return 1419, None
+    except ReadTimeout:
+        return 2419, None
+
 
 def delete_ssh_account(server_ip, username):
     
@@ -34,17 +37,20 @@ def delete_ssh_account(server_ip, username):
         'username': username
     }
     try:
-        resp = requests.delete(url=f'http://{server_ip}:8090/ssh/delete', json= data, headers= header(), timeout=10)
+        resp = requests.delete(url=f'http://{server_ip}:8090/ssh/delete', json= data, headers= header(), timeout=20)
         return resp.status_code, resp
     
     except ConnectTimeout:
 
-        return 1419, None
+        return 2419, None
     
     except ConnectionError:
 
-        return 1419, None
+        return 2419, None
 
+    except ReadTimeout:
+
+        return 2419, None
 
 def block_ssh_account(server_ip, username):
     
@@ -52,16 +58,20 @@ def block_ssh_account(server_ip, username):
         'username': username
     }
     try:
-        resp = requests.post(url=f'http://{server_ip}:8090/ssh/block', json= data, headers= header(), timeout=10)
+        resp = requests.post(url=f'http://{server_ip}:8090/ssh/block', json= data, headers= header(), timeout=20)
         return resp.status_code, resp
 
     except ConnectTimeout:
 
-        return 1419, None
+        return 2419, None
     
     except ConnectionError:
 
-        return 1419, None
+        return 2419, None
+
+    except ReadTimeout:
+
+        return 2419, None
 
 
 def unblock_ssh_account(server_ip, username):
@@ -71,13 +81,17 @@ def unblock_ssh_account(server_ip, username):
     }
     
     try:
-        resp = requests.post(url=f'http://{server_ip}:8090/ssh/unblock', json= data, headers= header(), timeout=10)
+        resp = requests.post(url=f'http://{server_ip}:8090/ssh/unblock', json= data, headers= header(), timeout=20)
         return resp.status_code, resp
 
     except ConnectTimeout:
 
-        return 1419, None
+        return 2419, None
     
     except ConnectionError:
 
-        return 1419, None
+        return 2419, None
+
+    except ReadTimeout:
+
+        return 2419, None
