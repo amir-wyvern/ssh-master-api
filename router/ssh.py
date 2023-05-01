@@ -127,7 +127,7 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
         
         user = db_user.create_user(UserRegisterForDataBase(**data), db)
         status_code, resp = create_user_if_not_exist(user.user_id)
-        logger.info(f'successfully created account in financial [agent: {current_user.user_id} -username: {username} -server: {interface.server_ip}]')
+        logger.info(f'successfully created account in financial [agent: {current_user.user_id} -user_id: {user.user_id} -username: {username} -server: {interface.server_ip}]')
         
         if status_code == 2419 :
             db_user.delete_user(user.user_id, db)
@@ -171,12 +171,16 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
     status_code, ssh_resp = create_ssh_account(interface.server_ip, username, password)
     
     if status_code == 2419 :
-        status_code, _ = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
-        logger.info(f'failed create ssh account, return cost to agent [agent: {current_user.user_id} -price: {interface.price}, resp_code: {ssh_resp.status_code}]')
+        if current_user.role == UserRole.AGENT:
+            status_code, _ = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
+        
+        logger.info(f'failed create ssh account, return cost to agent [agent: {current_user.user_id} -price: {interface.price}, resp_code: {status_code}]')
         raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': f'networt error [{interface.server_ip}]', 'internal_code': 2419})
         
     if status_code != 200:
-        status_code, _ = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
+        if current_user.role == UserRole.AGENT:
+            status_code, _ = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
+        
         logger.info(f'failed create ssh account, return cost to agent [agent: {current_user.user_id} -price: {interface.price}, resp_code: {ssh_resp.status_code}]')
         raise HTTPException(status_code=status_code, detail= ssh_resp.json()['detail'])
     
