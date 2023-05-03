@@ -100,6 +100,8 @@ while True:
             db_server.decrease_ssh_accounts_number(service.server_ip, db) 
             db_ssh_service.change_status(service.service_id, Status.DISABLE, db)
 
+            logging.info(f'account blocked [server: {service.server_ip} -username: {service.username}]')
+            
             if user.tel_id is not None:
 
                 agent = db_agent.get_agent_by_user_id(service.agent_id, db)
