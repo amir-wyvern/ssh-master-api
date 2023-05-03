@@ -14,6 +14,7 @@ from schemas import (
     SshInterfaceResponse,
     InterfaceMode,
     HTTPError,
+    UserRole,
     TokenUser
 )
 from db import (
@@ -31,7 +32,12 @@ router = APIRouter(prefix='/interface', tags=['Interfaces'])
 def fetch_ssh_interface(mode: InterfaceMode= InterfaceMode.BEST, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
     
     if mode == InterfaceMode.ALL:
-        interfaces = db_ssh_interface.get_all_interface(db, status= Status.ENABLE)
+        if current_user.role == UserRole.ADMIN:
+            interfaces = db_ssh_interface.get_all_interface(db)
+        
+        else:
+            interfaces = db_ssh_interface.get_all_interface(db, status= Status.ENABLE)
+        
         return interfaces
 
     elif mode == InterfaceMode.BEST:
