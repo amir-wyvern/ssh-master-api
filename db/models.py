@@ -19,8 +19,8 @@ class DbUser(Base):
     user_id = Column(Integer, index=True, primary_key=True, autoincrement=True)
     tel_id = Column(String(50), unique=True, index=True, nullable=True)
     name = Column(String(50), index=True, nullable=True)
-    phone_number = Column(String(20), index=True, unique=True, nullable=True)
-    email = Column(String(100), index=True, unique=True, nullable=True)
+    phone_number = Column(String(20), index=True, nullable=True)
+    email = Column(String(100), index=True, nullable=True)
     role = Column(Enum(UserRole), index=True, nullable=False)
 
 
