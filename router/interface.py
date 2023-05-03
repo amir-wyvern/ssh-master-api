@@ -79,4 +79,4 @@ def create_new_ssh_interface(request: SshInterfaceRegister, current_user: TokenU
 def update_ssh_interface_status(request: SshInterfaceState, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
     interface = db_ssh_interface.change_status(request.interface_id, request.new_status, db)  
-    return {'interface_id': interface.interface_id}
+    return {'interface_id': request.interface_id}
