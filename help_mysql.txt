@@ -1,0 +1,4 @@
+create user [manager] and set password sqlwyvern79 for that
+
+get access :
+GRANT ALL PRIVILEGES ON *.* TO 'manager'@'localhost' WITH GRANT OPTION;
