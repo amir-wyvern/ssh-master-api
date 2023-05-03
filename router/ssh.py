@@ -257,7 +257,6 @@ def update_ssh_account_expire(request: RenewalSsh, current_user: TokenUser= Depe
         if balance < price :
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail= {'message': 'Insufficient balance', 'internal_code': 1412} )
         
-        interface = db_ssh_interface.get_interface_by_id(service.interface_id, db, status= Status.ENABLE)
 
         status_code, resp = transfer(service.agent_id, ADMID_ID_FOR_FINANCIAl, price)
 
