@@ -32,13 +32,11 @@ def get_all_interface(db: Session, status: Status= None):
     else:
         return db.query(DbSshInterface).filter(DbSshInterface.status == status).all()
 
-def get_interface_by_id(interface_id , db: Session, status: Status= None):
 
-    if status == None:
-        return db.query(DbSshInterface).filter(DbSshInterface.interface_id == interface_id ).first()
+def get_interface_by_id(interface_id , db: Session) :
 
-    else:
-        return db.query(DbSshInterface).filter(and_(DbSshInterface.interface_id == interface_id, DbSshInterface.status == status)).first()
+    return db.query(DbSshInterface).filter(DbSshInterface.interface_id == interface_id ).first()
+
 
 def get_interface_by_server_ip(server_ip, db: Session, status: Status= None):
 
