@@ -35,13 +35,10 @@ def get_all_server(db: Session, status: Status = None):
     else:
         return db.query(DbServer).filter(DbServer.status == status).all()
 
-def get_server_by_ip(ip, db: Session, status: Status = None):
+def get_server_by_ip(ip, db: Session):
 
-    if status == None:
-        return db.query(DbServer).filter(DbServer.server_ip == ip ).first()
+    return db.query(DbServer).filter(DbServer.server_ip == ip ).first()
 
-    else:
-        return db.query(DbServer).filter(and_(DbServer.server_ip == ip, DbServer.status == status)).first()
 
 def get_server_by_location(location, db: Session, status: Status = None):
     
