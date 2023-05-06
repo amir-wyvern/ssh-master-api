@@ -9,12 +9,16 @@ def create_ssh(request: SshService, db: Session):
     service = DbSshService(
         server_ip= request.server_ip,
         port= request.port,
-        user_id= request.user_id,
-        agent_id= request.agent_id, 
+        agent_id= request.agent_id,
+        user_chat_id= request.user_chat_id,
         password= request.password,
         username= request.username,
+        name= request.name,
+        phone_number= request.phone_number,
+        email= request.email,
         interface_id= request.interface_id,
         limit= request.limit,
+        created= request.created, 
         expire= request.expire,
         status= request.status
     )
@@ -26,35 +30,46 @@ def create_ssh(request: SshService, db: Session):
     return service
 
 
-def get_service_by_agent_id(agent_id , db: Session, status= None):
+def get_services_by_agent_id(agent_id , db: Session, status= None):
 
     if status == None:
         return db.query(DbSshService).filter(DbSshService.agent_id == agent_id ).all()
     
     else:
         return db.query(DbSshService).filter(and_(DbSshService.agent_id == agent_id, DbSshService.status == status)).all()
-    
-def get_service_by_agent_and_range_time(agent_id, start_time, end_time, db: Session, status= None):
+
+def get_services_by_chat_id(chat_id , db: Session, status= None):
 
     if status == None:
-        # x= db.query(DbSshService).filter(and_(DbSshService.agent_id == agent_id) ).all()
-        # print(x[0].expire, start_time, end_time)
-        # return x
+        return db.query(DbSshService).filter(DbSshService.user_chat_id == chat_id ).all()
+    
+    else:
+        return db.query(DbSshService).filter(and_(DbSshService.user_chat_id == chat_id, DbSshService.status == status)).all()
+
+
+def get_service_by_phone_number(phone_number, db:Session):
+    return db.query(DbSshService).filter(DbSshService.phone_number == phone_number).first()
+
+
+def get_service_by_email(email, db:Session):
+    return db.query(DbSshService).filter(DbSshService.email == email).first()
+
+
+def get_services_by_agent_and_range_time(agent_id, start_time, end_time, db: Session, status= None):
+
+    if status == None:
         return db.query(DbSshService).filter(and_(DbSshService.agent_id == agent_id, DbSshService.expire >= start_time, DbSshService.expire <= end_time) ).all()
     
     else:
         return db.query(DbSshService).filter(and_(DbSshService.agent_id == agent_id, DbSshService.expire >= start_time, DbSshService.expire <= end_time, DbSshService.status == status)).all()
 
 
-def get_service_by_id(service_id , db: Session, status= None):
+def get_service_by_id(service_id , db: Session):
 
-    if status == None:
-        return db.query(DbSshService).filter(DbSshService.service_id == service_id ).first()
-    
-    else:
-        return db.query(DbSshService).filter(and_(DbSshService.service_id == service_id, DbSshService.status == status)).first()
+    return db.query(DbSshService).filter(DbSshService.service_id == service_id ).first()
 
-def get_all_service(db: Session, status= None):
+
+def get_all_services(db: Session, status= None):
 
     if status == None:
         return db.query(DbSshService).all()
@@ -62,22 +77,9 @@ def get_all_service(db: Session, status= None):
     else:
         return db.query(DbSshService).filter(DbSshService.status == status).all()
 
-def get_service_by_username(username , db: Session, status= None):
+def get_service_by_username(username , db: Session):
 
-    if status == None:
-        return db.query(DbSshService).filter(DbSshService.username == username ).first()
-    
-    else:
-        return db.query(DbSshService).filter(and_(DbSshService.username == username, DbSshService.status == status)).first()
-
-
-def get_service_by_user_id(user_id , db: Session, status= None):
-
-    if status == None:
-        return db.query(DbSshService).filter(DbSshService.user_id == user_id ).all()
-    
-    else:
-        return db.query(DbSshService).filter(and_(DbSshService.user_id == user_id, DbSshService.status == status)).all()
+    return db.query(DbSshService).filter(DbSshService.username == username ).first()
 
 
 def get_service_by_interface(interface_id , db: Session, status= None):
@@ -89,7 +91,7 @@ def get_service_by_interface(interface_id , db: Session, status= None):
         return db.query(DbSshService).filter(and_(DbSshService.interface_id == interface_id, DbSshService.status == status)).all()
 
 
-def get_service_by_server_ip(server_ip, db: Session, status= None):
+def get_services_by_server_ip(server_ip, db: Session, status= None):
 
     if status == None:
         return db.query(DbSshService).filter(DbSshService.server_ip == server_ip ).all()
@@ -98,7 +100,7 @@ def get_service_by_server_ip(server_ip, db: Session, status= None):
         return db.query(DbSshService).filter(and_(DbSshService.server_ip == server_ip, DbSshService.status == status)).all()
 
 
-def get_service_by_range_time(start_time: datetime, end_time: datetime, db: Session, status= None):
+def get_services_by_range_time(start_time: datetime, end_time: datetime, db: Session, status= None):
 
     if status == None:
         return db.query(DbSshService).filter(and_(DbSshService.expire >= start_time, DbSshService.expire <= end_time) ).all()
