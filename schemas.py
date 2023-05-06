@@ -31,7 +31,6 @@ class HTTPError(BaseModel):
 
 class UserRole(str ,Enum):
 
-    CUSTOMER = 'customer'
     AGENT = 'agent'
     ADMIN = 'admin'
 
@@ -41,10 +40,16 @@ class Status(str, Enum):
     ENABLE= 'enable'
     ALL= 'all'
 
+
+class ChangeStatus(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+
+
 class ServerState(BaseModel):
 
     server_ip: str
-    new_status: Status
 
 class FetchStatusServer(str, Enum):
 
@@ -87,9 +92,10 @@ class ServerResponse(BaseModel):
 class NewSsh(BaseModel):
 
     interface_id : int
-    name: Optional[str]
-    phone_number: Optional[PhoneNumberStr]
-    tel_id: Optional[str]
+    name: Optional[str] = None
+    phone_number: Optional[PhoneNumberStr] = None
+    email: Optional[EmailStr] = None
+    chat_id: Optional[str] = None
 
 class NewSshResponse(BaseModel):
 
@@ -116,8 +122,8 @@ class DepositRequest(BaseModel):
 
 class SetNewBalance(BaseModel):
 
-    agent_id: int
-    new_balance: float
+    username: str
+    new_balance: Union[float, int]
 
 class DepositConfirmation(BaseModel):
 
@@ -129,14 +135,14 @@ class AgentBalanceResponse(BaseModel):
     balance: float
 
 
-class RenewalSsh(BaseModel):
+class UpdateSshExpire(BaseModel):
 
-    service_id: int
+    username: str
     new_expire: datetime
 
-class RenewalSshResponse(BaseModel):
+class UpdateSshExpireResponse(BaseModel):
 
-    service_id: int
+    username: str
     expire: datetime
 
 class DeleteSsh(BaseModel):
@@ -161,11 +167,16 @@ class UserRegister(BaseModel):
 
 class UserRegisterForDataBase(BaseModel):
 
-    tel_id: Optional[str] = None
+    chat_id: Optional[str] = None
     name: Optional[str] = None
     phone_number: Optional[PhoneNumberStr] = None
     email: Optional[EmailStr] = None
+    bot_token: Optional[str] = None 
+    username: str
+    password: str
+    status: Status
     role: UserRole
+
 
 class AdminForDataBase(BaseModel):
 
@@ -204,15 +215,16 @@ class ServiceType(str, Enum):
 
 class NewUserViaService(BaseModel):
 
-    tel_id: Optional[str] = None
+    chat_id: Optional[str] = None
     name: Optional[str] = None
     phone_number: Optional[PhoneNumberStr] = None
     email: Optional[EmailStr] = None
-    agent_id: int = None
+    agent_id: Optional[int] = None
     interface_id: int
     username: str
     password: str
     service_status: Status
+    created: datetime
     expire: datetime
 
 class UserSShServiceDisplay(BaseModel):
@@ -224,6 +236,7 @@ class UserSShServiceDisplay(BaseModel):
     password: str
     username: str
     expire: datetime
+    created: datetime
     
 class UserV2rayServiceDisplay(BaseModel):
 
@@ -236,6 +249,13 @@ class ServiceDisplay(BaseModel):
 
     service_type: ServiceType
     detail: Union[UserSShServiceDisplay, UserV2rayServiceDisplay]
+
+class UserServices(BaseModel):
+
+    services: List[ServiceDisplay]
+
+    class Config:
+        orm_mode= True
 
 class UserDisplay(BaseModel):
 
@@ -250,20 +270,24 @@ class UserDisplay(BaseModel):
 class NewUserViaServiceResponse(BaseModel):
 
     service_id: int
-    user_id: int
+    agent_id: int
 
 
 class ChangeAgentStatus(BaseModel):
 
-    agent_id: int
-    status: Status
+    username: str
 
 class NewAgentRequest(BaseModel):
 
-    user_id: Optional[int]
-    bot_token: Optional[str]
+    chat_id: Optional[str] = None
+    name: Optional[str] = None
+    phone_number: Optional[PhoneNumberStr] = None
+    email: Optional[EmailStr] = None
+    bot_token: Optional[str] = None
     username: str
     password: str
+    status: Status
+
 
 class AgentUpdateRequest(BaseModel):
 
@@ -295,8 +319,12 @@ class UsersInfoAgentResponse(BaseModel):
     agent_id: int
     username: str
     password: str
+    name: Optional[str]
+    phone_number: Optional[str]
+    email: Optional[str]
     port: str
     status: Status
+    created: datetime
     expire: datetime
 
     class Config:
@@ -304,8 +332,8 @@ class UsersInfoAgentResponse(BaseModel):
 
 class AgentInfoResponse(BaseModel):
 
-    user_id: int
-    tel_id: Optional[str]
+    agent_id: int
+    chat_id: Optional[str]
     name: Optional[str]
     phone_number: Optional[str]
     email: Optional[str]
@@ -313,8 +341,9 @@ class AgentInfoResponse(BaseModel):
     balance: float
     username: str
     total_user: int
-    number_of_enable_users: int
-    number_of_disable_users: int
+    number_of_enable_services: int
+    number_of_disable_services: int
+    role: UserRole
     status: Status
 
 class DepositRequestResponse(BaseModel):
@@ -324,7 +353,7 @@ class DepositRequestResponse(BaseModel):
 
 class AgentListResponse(BaseModel):
 
-    user_id: int
+    agent_id: int
     username: str
     total_user: int
     number_of_enable_users: int
@@ -363,15 +392,20 @@ class NewSshForDataBase(BaseModel):
 class SshService(BaseModel):
 
     server_ip: str
-    user_id: int
     agent_id: int
+    user_chat_id: Optional[str]
     interface_id: int
     port: int
     password: str
     username: str
+    name: Optional[str]
+    phone_number: Optional[PhoneNumberStr]
+    email: Optional[EmailStr]
     limit: int
     status: Status
     expire: datetime
+    created: datetime
+
 
 class SshInterface(BaseModel):
 
@@ -404,6 +438,7 @@ class PlanResponse(BaseModel):
     location: str
     price: int
     traffic: int
+    status: Status
 
     class Config:
         orm_mode = True
@@ -423,12 +458,11 @@ class SshInterfaceRegister(BaseModel):
 class SshInterfaceState(BaseModel):
 
     interface_id: int
-    new_status: Status
 
 class SshInterfaceResponse(BaseModel):
 
     interface_id: int
-
+    status: Status
 
 
 class Token(BaseModel):
