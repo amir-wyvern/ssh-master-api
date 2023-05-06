@@ -12,11 +12,12 @@ from schemas import (
     ServerResponse,
     ServerState,
     FetchStatusServer,
-    HTTPError
+    HTTPError,
+    ChangeStatus,
+    Status
 )
-from db.models import DbAdmin
 from db.database import get_db
-from db import db_server, db_server
+from db import db_server, db_ssh_interface
 
 from slave_api.server import get_users
 from auth.auth import get_admin_user
@@ -29,7 +30,7 @@ router = APIRouter(prefix='/server', tags=['Server'])
 @router.post('/new', responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def add_new_server(request: NewServer, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
-    server = db_server.get_server_by_ip(request.server_ip, db)
+    server = db_server.get_server_by_ip(request.server_ip, db) 
     
     if server != None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'Server already exists', 'internal_code': 2405})
@@ -68,14 +69,25 @@ def fetch_server_or_servers(ip: str = None, mode: FetchStatusServer= FetchStatus
 
 
 @router.post('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
-def update_server_status(request: ServerState ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def update_server_status(request: ServerState , new_status: ChangeStatus =Query(...) ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(request.server_ip, db)
 
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
     
-    db_server.change_status(request.server_ip, request.new_status, db)
+    if server.status == new_status:
+        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'server already has this status', 'internal_code': 2431})
+
+    if new_status == ChangeStatus.DISABLE:
+
+        interfaces = db_ssh_interface.get_interface_by_server_ip(request.server_ip, db, status= ChangeStatus.ENABLE)
+        
+        for interface in interfaces:
+            
+            db_ssh_interface.change_status(interface.interface_id, ChangeStatus.DISABLE, db)
+        
+    db_server.change_status(request.server_ip, new_status, db)
 
     return 'Server status successfully changed!'
 

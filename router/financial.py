@@ -14,12 +14,12 @@ from schemas import (
     TokenUser,
     UserRole
 )
-from db import db_agent
+from db import db_user
 from db.database import get_db
 from auth.auth import get_agent_user, get_admin_user
 
 from financial_api.deopsit import deposit_request, deposit_confirmation
-from financial_api.user import set_balance, get_balance
+from financial_api.user import set_balance
 
 import random
 import string
@@ -59,12 +59,12 @@ def generate_password():
 @router.post('/balance', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}}, tags=['Agent-Menagement'])
 def update_agent_balance(request: SetNewBalance, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-    agent = db_agent.get_agent_by_user_id(request.agent_id, db)
+    agent = db_user.get_user_by_username(request.username, db)
 
     if agent is None:
-        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail= {'message': 'The agent_id could not be found', 'internal_code': 2407} )
+        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail= {'message': 'username could not be found', 'internal_code': 2407} )
 
-    status_code, resp = set_balance(request.agent_id, request.new_balance)
+    status_code, resp = set_balance(agent.user_id, request.new_balance)
 
     if status_code == 2419:
         raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail= {'message': 'Connection Error Or Connection Timeout', 'internal_code': 2419} )

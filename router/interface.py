@@ -1,8 +1,8 @@
 from fastapi import (
     APIRouter,
     Depends,
-    Query,
     status,
+    Query,
     HTTPException
 )
 from sqlalchemy.orm.session import Session
@@ -15,7 +15,8 @@ from schemas import (
     InterfaceMode,
     HTTPError,
     UserRole,
-    TokenUser
+    TokenUser,
+    ChangeStatus
 )
 from db import (
     db_server,
@@ -30,14 +31,14 @@ router = APIRouter(prefix='/interface', tags=['Interfaces'])
 
 @router.get('/ssh/fetch', response_model= List[PlanResponse], tags=['Agent-Profile'])
 def fetch_ssh_interface(mode: InterfaceMode= InterfaceMode.BEST, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
-    
+
     if mode == InterfaceMode.ALL:
         if current_user.role == UserRole.ADMIN:
             interfaces = db_ssh_interface.get_all_interface(db)
         
         else:
             interfaces = db_ssh_interface.get_all_interface(db, status= Status.ENABLE)
-        
+
         return interfaces
 
     elif mode == InterfaceMode.BEST:
@@ -82,7 +83,15 @@ def create_new_ssh_interface(request: SshInterfaceRegister, current_user: TokenU
 
 
 @router.post('/ssh/status', response_model= SshInterfaceResponse)
-def update_ssh_interface_status(request: SshInterfaceState, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def update_ssh_interface_status(request: SshInterfaceState, new_status: ChangeStatus, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
-    interface = db_ssh_interface.change_status(request.interface_id, request.new_status, db)  
-    return {'interface_id': request.interface_id}
+    interface = db_ssh_interface.get_interface_by_id(request.interface_id, db)
+    if interface is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'message': 'Interface_id not exists', 'internal_code': 2410})
+    
+    if interface.status == new_status:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'Interface_id already has this status', 'internal_code': 2428})
+    
+    db_ssh_interface.change_status(request.interface_id, new_status, db)  
+    return {'interface_id': request.interface_id, 'status': new_status}
+
