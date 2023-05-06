@@ -9,6 +9,7 @@ from typing import Annotated
 from pydantic import ValidationError
 from jose import JWTError, jwt
 from schemas import TokenUser, UserRole
+from db.models import DbUser
 from fastapi import (
   Depends,
   HTTPException,
@@ -37,9 +38,12 @@ def verify_password(plain_password, hashed_password):
     return plain_password == hashed_password
 
 
-def authenticate_user(user, password: str):
+def authenticate_user(user: DbUser, password: str, role: UserRole):
     
     if user is None:
+        return False
+    
+    if user.role != role:
         return False
     
     if not verify_password(password, user.password):
