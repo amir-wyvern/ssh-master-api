@@ -2,3 +2,12 @@ create user [manager] and set password sqlwyvern79 for that
 
 get access :
 GRANT ALL PRIVILEGES ON *.* TO 'manager'@'localhost' WITH GRANT OPTION;
+
+
+> do this commands
+
+SHOW VARIABLES LIKE 'validate_password%';
+SET GLOBAL validate_password.policy=LOW;
+CREATE USER 'manager'@'localhost' IDENTIFIED BY 'sqlwyvern79';
+GRANT ALL PRIVILEGES ON *.* TO 'manager'@'localhost' WITH GRANT OPTION;
+
