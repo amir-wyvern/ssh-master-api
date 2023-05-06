@@ -2,7 +2,7 @@
 2404= The user_id could not be found
 2405= Server already exists
 2406= Server not exists
-2407= The agent_id could not be found
+2407= username could not be found
 2408= The user_id already has agent role
 2409= Username already exists
 2410= Interface_id not exists
@@ -10,15 +10,24 @@
 1412= Insufficient balance
 2419= Connection Error Or Connection Timeout
 2413= the service_id not exists
-2414= invalid parameter for expire
+2414= invalid parameter for new expire
 2415= The user has already been block
 2416= The user is not blocked
 2417= agent_id is None
 2418= admin can't access to this item
 2419= You are not the agent of this user
-2420= The tel_id is not exist
+2420= The chat_id is not exist
 2421= Server [{server_ip}] is disable
 2422= Username is already have a service 
+2423= chat_id already exists
+2424= bot_token already exists
+2425= this chat_id have not any service
+2426= Interface_id is disable
+2427= The Server [{server_ip}] has disable
+2428= Interface_id already has this status
+2429= the username [{username}] not exist in server [{server_ip}]
+2430= agent already has this status
+2431= server already has this status
 
 # financial
 1003= There was a problem in registering the deposit request
