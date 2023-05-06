@@ -1,6 +1,7 @@
 from fastapi import (
     APIRouter,
     Depends,
+    Query,
     HTTPException,
     status
 )
@@ -11,69 +12,56 @@ from schemas import (
     UserRegisterForDataBase,
     NewAgentRequest,
     UserRole,
-    NewAgentForDataBase,
     ChangeAgentStatus,
     AgentListResponse,
+    ChangeStatus,
     TokenUser
 )
-from db import db_user, db_agent, db_ssh_service
+from db import db_user, db_ssh_service
 from db.database import get_db
 from financial_api.user import  create_user_if_not_exist
 from auth.auth import get_admin_user
 from typing import List
-from datetime import datetime, timedelta
 
 router = APIRouter(prefix='/agent', tags=['Agent-Menagement'])
 
 @router.post('/new', response_model= str,responses={status.HTTP_409_CONFLICT:{'model':HTTPError}, status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-    agent = db_agent.get_agent_by_username(request.username, db)
+    agent = db_user.get_user_by_username(request.username, db)
 
     if agent:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'Username already exists', 'internal_code': 2409})
 
-
-    if request.user_id is None:
-        
-        data = {
-            'tel_id': None,
-            'name': None,
-            'phone_number': None,
-            'email': None,
-            'role': UserRole.AGENT
-        }
-        user = db_user.create_user(UserRegisterForDataBase(**data), db)
-        status_code, resp = create_user_if_not_exist(user.user_id)
-        
-        if status_code == 2419 :
-            db_user.delete_user(user.user_id, db)
-            raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'Connection Error Or Connection Timeout', 'internal_code': 2419})
-        
-        elif status_code != 200:
-            db_user.delete_user(user.user_id, db)
-            raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
-
-    else :
-        
-        user = db_user.get_user(request.user_id, db)
-        
-        if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'The user_id could not be found', 'internal_code': 2404})
-        
-        if user.role in [UserRole.AGENT, UserRole.ADMIN]:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'The user_id already agent', 'internal_code': 2408})
-
-
+    if request.chat_id and db_user.get_user_by_chat_id(request.chat_id, db):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'chat_id already exists', 'internal_code': 2423})
+    
+    if request.bot_token and db_user.get_user_by_bot_token(request.bot_token, db):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'bot_token already exists', 'internal_code': 2424})
+    
+    
     data = {
-        'user_id': user.user_id,
+        'chat_id': request.chat_id,
+        'name': request.name,
+        'phone_number': request.phone_number,
+        'email': request.email,
         'bot_token': request.bot_token,
         'username': request.username,
         'password': request.password,
-        'status': Status.ENABLE
+        'status': request.status,
+        'role': UserRole.AGENT
     }
+
+    user = db_user.create_user(UserRegisterForDataBase(**data), db)
+    status_code, resp = create_user_if_not_exist(user.user_id)
     
-    db_agent.create_agent(NewAgentForDataBase(**data), db)
+    if status_code == 2419 :
+        db_user.delete_user(user.user_id, db)
+        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'Connection Error Or Connection Timeout', 'internal_code': 2419})
+    
+    elif status_code != 200:
+        db_user.delete_user(user.user_id, db)
+        raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
 
     # =====================
     # this part for swager for create a new node for telegram bot
@@ -82,27 +70,30 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
     return 'agent successfully registered'
 
 @router.post('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
-def disable_or_enable_agent(request: ChangeAgentStatus, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def disable_or_enable_agent(request: ChangeAgentStatus, new_status: ChangeStatus= Query(...), current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-    agent = db_agent.get_agent_by_user_id(request.agent_id, db)
+    agent = db_user.get_user_by_username(request.username, db)
     
     if agent is None:
-        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'The agent_id could not be found', 'internal_code': 2407})
+        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'username could not be found', 'internal_code': 2407})
     
-    db_agent.change_status(request.agent_id, request.status, db)
+    if agent.status == new_status:
+        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'agent already has this status', 'internal_code': 2430})
 
-    return f'successfully change the agent status to {request.status}'
+    db_user.change_status(agent.user_id, new_status, db)
+
+    return f'successfully change the {agent.username} agent status to {new_status}'
 
 
 @router.get('/list', response_model= List[AgentListResponse])
 def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-    agents = db_agent.get_all_agents(db)
+    agents = db_user.get_all_users_by_role(UserRole.AGENT, db)
     
     ls_resp = []
     for agent in agents:
 
-        users = db_ssh_service.get_service_by_agent_id(agent.user_id, db)
+        users = db_ssh_service.get_services_by_agent_id(agent.user_id, db)
         
         all_users = 0
         enable_users = 0
@@ -119,7 +110,7 @@ def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Sessio
                     disable_users += 1
 
         data = {
-            'user_id': agent.user_id,
+            'agent_id': agent.user_id,
             'username': agent.username,
             'total_user': all_users,
             'number_of_enable_users': enable_users,
