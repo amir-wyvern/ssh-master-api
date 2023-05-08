@@ -464,6 +464,10 @@ class SshInterfaceResponse(BaseModel):
     interface_id: int
     status: Status
 
+class NewSshInterfaceResponse(BaseModel):
+
+    interface_id: int
+
 
 class Token(BaseModel):
     access_token: str
