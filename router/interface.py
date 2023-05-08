@@ -16,6 +16,7 @@ from schemas import (
     HTTPError,
     UserRole,
     TokenUser,
+    NewSshInterfaceResponse,
     ChangeStatus
 )
 from db import (
@@ -70,7 +71,7 @@ def fetch_ssh_interface(mode: InterfaceMode= InterfaceMode.BEST, current_user: T
         return [best_interface]
 
 
-@router.post('/ssh/new', response_model= SshInterfaceResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError} })
+@router.post('/ssh/new', response_model= NewSshInterfaceResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError} })
 def create_new_ssh_interface(request: SshInterfaceRegister, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
     server = db_server.get_server_by_ip(request.server_ip, db)
