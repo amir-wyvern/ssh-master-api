@@ -109,9 +109,6 @@ def add_new_user_via_service(request: NewUserViaService, service_type: ServiceTy
         if interface is None:
             raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail= {'message': 'Interface_id not exists', 'internal_code': 2410} )
 
-        if interface.status == Status.DISABLE:
-            raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail= {'message': 'Interface_id is disable', 'internal_code': 2426} )
-
         service = db_ssh_service.get_service_by_username(request.username, db)
 
         if service is not None:
