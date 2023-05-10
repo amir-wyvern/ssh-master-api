@@ -232,11 +232,15 @@ class UserSShServiceDisplay(BaseModel):
     service_id: int
     host: str
     port: int
+    name: Optional[str]
+    email: Optional[EmailStr]
+    phone_number: Optional[PhoneNumberStr]
     agent_id: int
     password: str
     username: str
     expire: datetime
     created: datetime
+    status: Status
     
 class UserV2rayServiceDisplay(BaseModel):
 
