@@ -7,10 +7,10 @@ from fastapi import (
 from sqlalchemy.orm.session import Session
 from schemas import (
     HTTPError,
-    Status,
     ServiceType,
     TokenUser,
     UserRole,
+    Status,
     SshService,
     ServiceType,
     UserServices,
@@ -56,12 +56,23 @@ def generate_password():
     return hashed_password
 
 @router.get('/services', response_model= UserServices, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}, status.HTTP_409_CONFLICT:{'model':HTTPError}})
-def get_user_services_via_telegram(chat_id: str, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
+def get_user_services_via_telegram(chat_id: str= None,username: str= None, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
-    services = db_ssh_service.get_services_by_chat_id(chat_id, db, status= Status.ENABLE)
+    if username is None and chat_id is None:
+        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'you shoud send at least username or chat_id', 'internal_code': 2432})
+    
+    if chat_id:
+        services = db_ssh_service.get_services_by_chat_id(chat_id, db, status= Status.ENABLE)
+        if services == [] :
+            raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'this chat_id have not any service', 'internal_code': 2425})
+    
+    else:
+        service = db_ssh_service.get_service_by_username(chat_id, db)
+        if service is None or service.status == Status.DISABLE:
+            raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any service', 'internal_code': 2433})
 
-    if services == [] :
-        raise  HTTPException(status_code= status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'this chat_id have not any service', 'internal_code': 2425})
+        services = [service]
+
 
     ls_service = []
     for service in services:
@@ -74,10 +85,14 @@ def get_user_services_via_telegram(chat_id: str, current_user: TokenUser= Depend
                     'agent_id': service.agent_id,
                     'host': service.server_ip,
                     'port': service.port,
+                    'name': service.name,
+                    'email': service.email,
+                    'phone_number': service.phone_number,
                     'username': service.username,
                     'password': service.password,
                     'created': service.created,
-                    'expire': service.expire.replace(tzinfo=pytz.utc)
+                    'expire': service.expire.replace(tzinfo=pytz.utc),
+                    'status': service.status
                 })
             }
 
