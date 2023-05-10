@@ -67,7 +67,7 @@ def get_user_services_via_telegram(chat_id: str= None,username: str= None, curre
             raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'this chat_id have not any service', 'internal_code': 2425})
     
     else:
-        service = db_ssh_service.get_service_by_username(chat_id, db)
+        service = db_ssh_service.get_service_by_username(username, db)
         if service is None or service.status == Status.DISABLE:
             raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any service', 'internal_code': 2433})
 
