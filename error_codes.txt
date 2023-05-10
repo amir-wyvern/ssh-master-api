@@ -28,6 +28,8 @@
 2429= the username [{username}] not exist in server [{server_ip}]
 2430= agent already has this status
 2431= server already has this status
+2432= you shoud send at least username or chat_id
+2433= This Username have not any service
 
 # financial
 1003= There was a problem in registering the deposit request
