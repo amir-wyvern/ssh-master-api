@@ -85,6 +85,7 @@ def get_user_services_via_telegram(chat_id: str= None,username: str= None, curre
                     'agent_id': service.agent_id,
                     'host': service.server_ip,
                     'port': service.port,
+                    'interface_id': service.interface_id,
                     'name': service.name,
                     'email': service.email,
                     'phone_number': service.phone_number,
