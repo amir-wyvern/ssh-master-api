@@ -232,6 +232,7 @@ class UserSShServiceDisplay(BaseModel):
     service_id: int
     host: str
     port: int
+    interface_id: int
     name: Optional[str]
     email: Optional[EmailStr]
     phone_number: Optional[PhoneNumberStr]
