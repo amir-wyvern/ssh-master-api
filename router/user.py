@@ -15,6 +15,7 @@ from schemas import (
     ServiceType,
     UserServices,
     NewUserViaService,
+    ServiceStatus,
     UserSShServiceDisplay,
     NewUserViaServiceResponse
 )
@@ -62,17 +63,16 @@ def get_user_services_via_telegram(chat_id: str= None,username: str= None, curre
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'you shoud send at least username or chat_id', 'internal_code': 2432})
     
     if chat_id:
-        services = db_ssh_service.get_services_by_chat_id(chat_id, db, status= Status.ENABLE)
+        services = db_ssh_service.get_services_by_chat_id(chat_id, db, status= ServiceStatus.ENABLE)
         if services == [] :
-            raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'this chat_id have not any service', 'internal_code': 2425})
+            raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'this chat_id have not any active service', 'internal_code': 2425})
     
     else:
         service = db_ssh_service.get_service_by_username(username, db)
-        if service is None or service.status == Status.DISABLE:
-            raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any service', 'internal_code': 2433})
+        if service is None or service.status == ServiceStatus.DISABLE or service.status == ServiceStatus.DELETED:
+            raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any active service', 'internal_code': 2433})
 
         services = [service]
-
 
     ls_service = []
     for service in services:
