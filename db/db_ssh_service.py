@@ -82,7 +82,7 @@ def get_service_by_username(username , db: Session):
     return db.query(DbSshService).filter(DbSshService.username == username ).first()
 
 
-def get_service_by_interface(interface_id , db: Session, status= None):
+def get_services_by_interface_id(interface_id , db: Session, status= None):
 
     if status == None:
         return db.query(DbSshService).filter(DbSshService.interface_id == interface_id ).all()
