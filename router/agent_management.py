@@ -8,13 +8,13 @@ from fastapi import (
 from sqlalchemy.orm.session import Session
 from schemas import (
     HTTPError,
-    Status,
     UserRegisterForDataBase,
     NewAgentRequest,
     UserRole,
     ChangeAgentStatus,
     AgentListResponse,
-    ChangeStatus,
+    UserStatus,
+    ServiceStatus,
     TokenUser
 )
 from db import db_user, db_ssh_service
@@ -70,7 +70,7 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
     return 'agent successfully registered'
 
 @router.post('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
-def disable_or_enable_agent(request: ChangeAgentStatus, new_status: ChangeStatus= Query(...), current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def disable_or_enable_agent(request: ChangeAgentStatus, new_status: UserStatus= Query(...), current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     agent = db_user.get_user_by_username(request.username, db)
     
@@ -93,28 +93,33 @@ def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Sessio
     ls_resp = []
     for agent in agents:
 
-        users = db_ssh_service.get_services_by_agent_id(agent.user_id, db)
+        services = db_ssh_service.get_services_by_agent_id(agent.user_id, db)
         
-        all_users = 0
-        enable_users = 0
-        disable_users = 0
+        all_services = 0
+        enable_services = 0
+        disable_services = 0
+        deleted_services = 0
 
-        if users :
-            all_users = len(users)
+        if services :
+            all_services = len(services) 
 
-            for user in users:
-                if user.status == Status.ENABLE:
-                    enable_users += 1
+            for service in services:
+                if service.status == ServiceStatus.ENABLE:
+                    enable_services += 1
 
-                elif user.status == Status.DISABLE:
-                    disable_users += 1
+                elif service.status == ServiceStatus.DISABLE:
+                    disable_services += 1
+
+                elif service.status == ServiceStatus.DELETED:
+                    deleted_services += 1
 
         data = {
             'agent_id': agent.user_id,
             'username': agent.username,
-            'total_user': all_users,
-            'number_of_enable_users': enable_users,
-            'number_of_disable_users': disable_users,
+            'total_ssh_user': all_services,
+            'enable_ssh_services': enable_services,
+            'disable_ssh_services': disable_services,
+            'deleted_ssh_services': deleted_services,
             'status': agent.status
         }
 
