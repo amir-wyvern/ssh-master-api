@@ -1,8 +1,9 @@
 from typing import List, Union, Optional, Dict, Any
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
 from datetime import datetime
 import re
+
     
 class PhoneNumberStr(str):
     @classmethod
@@ -38,23 +39,50 @@ class Status(str, Enum):
 
     DISABLE= 'disable'
     ENABLE= 'enable'
+    DELETED= 'deleted'
     ALL= 'all'
 
-
-class ChangeStatus(str, Enum):
+class ServerStatus(str, Enum):
 
     DISABLE= 'disable'
     ENABLE= 'enable'
 
+class InterfaceStatus(str, Enum):
 
-class ServerState(BaseModel):
+    DISABLE= 'disable'
+    ENABLE= 'enable'
 
-    server_ip: str
+class UserAgentStatus(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+    ALL= 'all'
+
+class UserStatus(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+
+class ServiceStatus(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+    DELETED= 'deleted'
 
 class FetchStatusServer(str, Enum):
 
     ALL = 'all'
     ONE = 'one'
+
+
+class UpdateServerStatus(BaseModel):
+
+    server_ip: str
+
+class UpdateMaxUserServer(BaseModel):
+    
+    server_ip: str
+    new_max_user: int = Field(gt=0)
 
 class ServerCaps(BaseModel):
 
@@ -71,7 +99,7 @@ class NewServer(BaseModel):
     v2ray_accounts_number: int
     root_password: str
     manager_password: str
-    status: Status
+    status: ServerStatus
 
 
 class ServerResponse(BaseModel):
@@ -82,7 +110,7 @@ class ServerResponse(BaseModel):
     max_users: int
     ssh_accounts_number: int
     v2ray_accounts_number: int
-    status: Status
+    status: ServerStatus
 
     class Config:
         
@@ -149,6 +177,11 @@ class DeleteSsh(BaseModel):
 
     username : str
 
+
+class RenewSsh(BaseModel):
+
+    username : str
+
 class BlockSsh(BaseModel):
 
     username : str
@@ -174,7 +207,7 @@ class UserRegisterForDataBase(BaseModel):
     bot_token: Optional[str] = None 
     username: str
     password: str
-    status: Status
+    status: UserStatus
     role: UserRole
 
 
@@ -241,7 +274,7 @@ class UserSShServiceDisplay(BaseModel):
     username: str
     expire: datetime
     created: datetime
-    status: Status
+    status: ServiceStatus
     
 class UserV2rayServiceDisplay(BaseModel):
 
@@ -282,6 +315,7 @@ class ChangeAgentStatus(BaseModel):
 
     username: str
 
+
 class NewAgentRequest(BaseModel):
 
     chat_id: Optional[str] = None
@@ -291,7 +325,7 @@ class NewAgentRequest(BaseModel):
     bot_token: Optional[str] = None
     username: str
     password: str
-    status: Status
+    status: UserStatus
 
 
 class AgentUpdateRequest(BaseModel):
@@ -328,7 +362,7 @@ class UsersInfoAgentResponse(BaseModel):
     phone_number: Optional[str]
     email: Optional[str]
     port: str
-    status: Status
+    status: ServiceStatus
     created: datetime
     expire: datetime
 
@@ -346,10 +380,11 @@ class AgentInfoResponse(BaseModel):
     balance: float
     username: str
     total_user: int
-    number_of_enable_services: int
-    number_of_disable_services: int
+    enable_ssh_services: int
+    disable_ssh_services: int
+    deleted_ssh_services: int
     role: UserRole
-    status: Status
+    status: UserStatus
 
 class DepositRequestResponse(BaseModel):
 
@@ -360,10 +395,10 @@ class AgentListResponse(BaseModel):
 
     agent_id: int
     username: str
-    total_user: int
-    number_of_enable_users: int
-    number_of_disable_users: int
-    status: Status    
+    total_ssh_user: int
+    enable_ssh_services: int
+    disable_ssh_services: int
+    status: UserStatus    
 
 class HTTPError(BaseModel):
 
@@ -407,7 +442,7 @@ class SshService(BaseModel):
     phone_number: Optional[PhoneNumberStr]
     email: Optional[EmailStr]
     limit: int
-    status: Status
+    status: ServiceStatus
     expire: datetime
     created: datetime
 
@@ -443,7 +478,7 @@ class PlanResponse(BaseModel):
     location: str
     price: int
     traffic: int
-    status: Status
+    status: InterfaceStatus
 
     class Config:
         orm_mode = True
@@ -458,7 +493,7 @@ class SshInterfaceRegister(BaseModel):
     price: float
     traffic: int
     duration: int
-    status: Status
+    status: InterfaceStatus
 
 class SshInterfaceState(BaseModel):
 
@@ -467,12 +502,16 @@ class SshInterfaceState(BaseModel):
 class SshInterfaceResponse(BaseModel):
 
     interface_id: int
-    status: Status
+    status: InterfaceStatus
 
 class NewSshInterfaceResponse(BaseModel):
 
     interface_id: int
 
+class UsersTransferToNewInterface(BaseModel):
+
+    old_interface_id: int
+    new_interface_id: int
 
 class Token(BaseModel):
     access_token: str
