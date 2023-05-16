@@ -2,31 +2,48 @@ from fastapi import (
     APIRouter,
     Depends,
     status,
-    Query,
     HTTPException
 )
 from sqlalchemy.orm.session import Session
 from schemas import (
-    Status,
+    ServiceStatus,
+    InterfaceStatus,
     SshInterfaceState,
     PlanResponse,
     SshInterfaceRegister,
     SshInterfaceResponse,
+    UsersTransferToNewInterface,
     InterfaceMode,
     HTTPError,
     UserRole,
+    ServerStatus,
     TokenUser,
-    NewSshInterfaceResponse,
-    ChangeStatus
+    NewSshInterfaceResponse
 )
 from db import (
     db_server,
-    db_ssh_interface
+    db_ssh_interface,
+    db_ssh_service
 )
-
+from slave_api.ssh import (
+    create_ssh_account_via_group, 
+    delete_ssh_account_via_group, 
+    block_ssh_account_via_groups
+)
 from typing import List
 from db.database import get_db
 from auth.auth import get_admin_user, get_agent_user
+import logging
+
+logger = logging.getLogger() 
+logger.setLevel(logging.INFO) 
+
+# Create a file handler to save logs to a file
+file_handler = logging.FileHandler('ssh_route.log') 
+file_handler.setLevel(logging.INFO) 
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
+file_handler.setFormatter(formatter) 
+logger.addHandler(file_handler) 
 
 router = APIRouter(prefix='/interface', tags=['Interfaces'])
 
@@ -38,14 +55,14 @@ def fetch_ssh_interface(mode: InterfaceMode= InterfaceMode.BEST, current_user: T
             interfaces = db_ssh_interface.get_all_interface(db)
         
         else:
-            interfaces = db_ssh_interface.get_all_interface(db, status= Status.ENABLE)
+            interfaces = db_ssh_interface.get_all_interface(db, status= InterfaceStatus.ENABLE)
 
         return interfaces
 
     elif mode == InterfaceMode.BEST:
-        interfaces = db_ssh_interface.get_all_interface(db,  Status.ENABLE)
+        interfaces = db_ssh_interface.get_all_interface(db,  InterfaceStatus.ENABLE)
         
-        servers = db_server.get_all_server(db, status= Status.ENABLE)
+        servers = db_server.get_all_server(db, status= ServerStatus.ENABLE)
 
         def find_server(ip):
 
@@ -58,16 +75,18 @@ def fetch_ssh_interface(mode: InterfaceMode= InterfaceMode.BEST, current_user: T
         if interfaces == [] or servers == []:
             return []
         
-        best_interface = interfaces[0]
-        best_server = servers[0]
+        best_interface = []
+        tmp_min = 10**6
 
         for interface in interfaces:
-            server = find_server(interface.server_ip)
-            if server and server.ssh_accounts_number < best_server.ssh_accounts_number and server.ssh_accounts_number <= server.max_users:
 
-                best_server = server
-                best_interface = interface
-                        
+            if find_server(interface.server_ip):
+                services = db_ssh_service.get_services_by_server_ip(interface.server_ip, db, status= ServiceStatus.ENABLE)
+
+                if len(services) < tmp_min :
+                    tmp_min = len(services)
+                    best_interface = interface
+            
         return [best_interface]
 
 
@@ -84,7 +103,7 @@ def create_new_ssh_interface(request: SshInterfaceRegister, current_user: TokenU
 
 
 @router.post('/ssh/status', response_model= SshInterfaceResponse)
-def update_ssh_interface_status(request: SshInterfaceState, new_status: ChangeStatus, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def update_ssh_interface_status(request: SshInterfaceState, new_status: InterfaceStatus, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
     interface = db_ssh_interface.get_interface_by_id(request.interface_id, db)
     if interface is None:
@@ -96,3 +115,82 @@ def update_ssh_interface_status(request: SshInterfaceState, new_status: ChangeSt
     db_ssh_interface.change_status(request.interface_id, new_status, db)  
     return {'interface_id': request.interface_id, 'status': new_status}
 
+
+@router.post('/ssh/transfer', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+def transfer_ssh_users_to_new_interface(request: UsersTransferToNewInterface ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+    
+    old_interface = db_ssh_interface.get_interface_by_id(request.old_interface_id, db)
+    if old_interface is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'message': 'Interface_id not exists', 'internal_code': 2410})
+    
+    new_interface = db_ssh_interface.get_interface_by_id(request.new_interface_id, db)
+    if new_interface is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'message': 'Interface_id not exists', 'internal_code': 2410})
+    
+    enable_old_state_users = db_ssh_service.get_services_by_interface_id(old_interface.interface_id, db, status= ServiceStatus.ENABLE)
+    disable_old_state_users = db_ssh_service.get_services_by_interface_id(old_interface.interface_id, db, status= ServiceStatus.DISABLE)
+
+
+    enable_old_state_users_structed = [{'username': user.username} for user in enable_old_state_users]
+    status_code, ssh_resp = delete_ssh_account_via_group(old_interface.server_ip, enable_old_state_users_structed)
+    
+    if status_code == 2419 :
+
+        logger.info(f'delete ssh group account failed [resp_code: {status_code} -content: {ssh_resp.content}]')
+        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': f'networt error [{old_interface.server_ip}]', 'internal_code': 2419})
+        
+    if status_code != 200:
+        logger.info(f'delete ssh group account failed [resp_code: {status_code} -content: {ssh_resp.content}]')
+        raise HTTPException(status_code=status_code, detail= ssh_resp.json()['detail'])
+    
+    logger.info(f'delete ssh group account was successfully [server: {old_interface.server_ip}, -users: {enable_old_state_users_structed}]')
+
+    disable_old_state_users_structed = [{'username': user.username} for user in disable_old_state_users]
+    status_code, ssh_resp = delete_ssh_account_via_group(old_interface.server_ip, disable_old_state_users_structed)
+
+    if status_code == 2419 :
+
+        logger.info(f'delete ssh group account failed [resp_code: {status_code} -content: {ssh_resp.content}]')
+        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': f'networt error [{old_interface.server_ip}]', 'internal_code': 2419})
+        
+    if status_code != 200:
+        logger.info(f'delete ssh group account failed [resp_code: {status_code} -content: {ssh_resp.content}]')
+        raise HTTPException(status_code=status_code, detail= ssh_resp.json()['detail'])
+
+    logger.info(f'delete ssh group account was successfully [server: {old_interface.server_ip}, -users: {disable_old_state_users}]')
+    
+
+    enable_new_users = [{'username': user.username , 'password': user.password} for user in enable_new_users]
+    disable_new_users = [{'username': user.username , 'password': user.password} for user in disable_new_users]
+
+    new_users = enable_new_users + disable_new_users
+
+
+    status_code, ssh_resp = create_ssh_account_via_group(new_interface.server_ip, new_users)
+    
+    if status_code == 2419 :
+
+        logger.info(f'ssh group account creation failed [resp_code: {status_code} -content: {ssh_resp}]')
+        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': f'networt error [{new_interface.server_ip}]', 'internal_code': 2419})
+        
+    if status_code != 200:
+        logger.info(f'ssh group account creation failed [resp_code: {ssh_resp.status_code} -content: {ssh_resp.content}]')
+        raise HTTPException(status_code=status_code, detail= ssh_resp.json()['detail'])
+    
+    logger.info(f'the ssh group account was created successfully [server: {new_interface.server_ip} -users: {new_users}]')
+    
+
+    status_code, ssh_resp = block_ssh_account_via_groups(new_interface.server_ip, disable_new_users)
+    
+    if status_code == 2419 :
+
+        logger.info(f'ssh group account creation failed [resp_code: {status_code} -content: {ssh_resp.content}]')
+        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': f'networt error [{new_interface.server_ip}]', 'internal_code': 2419})
+        
+    if status_code != 200:
+        logger.info(f'ssh group account creation failed [resp_code: {ssh_resp.status_code} -content: {ssh_resp.content}]')
+        raise HTTPException(status_code=status_code, detail= ssh_resp.json()['detail'])
+    
+    logger.info(f'the ssh group account was created successfully [server: {new_interface.server_ip} -users: {new_users}]')
+
+    return f'Successfully transfered users from interface [{old_interface.interface_id} to interface [{new_interface.interface_id}]'
