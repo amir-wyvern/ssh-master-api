@@ -1,12 +1,12 @@
-from db import db_ssh_service, db_user, db_agent, db_server
+from db import db_ssh_service, db_user, db_server
 from db.database import get_db
 from datetime import datetime, timedelta
 from celery_tasks.tasks import NotificationCeleryTask
 from celery_tasks.utils import create_worker_from
 from cache.database import get_redis_cache
 from cache.cache_session import get_check_label, set_check_label
-from slave_api.ssh import block_ssh_account
-from schemas import Status
+from slave_api.ssh import block_ssh_account, delete_ssh_account
+from schemas import ServiceStatus
 from time import sleep
 import pytz
 
@@ -40,19 +40,19 @@ timedelta_1 = timedelta(days=1)
 
 while True:
     
-    services = db_ssh_service.get_all_service(db, status= Status.ENABLE)
+    enable_services = db_ssh_service.get_all_services(db, status= ServiceStatus.ENABLE)
+    disable_services = db_ssh_service.get_all_services(db, status= ServiceStatus.DISABLE)
 
-    for service in services:
+    for service in enable_services:
 
         time_now = datetime.now().replace(tzinfo=pytz.utc)
         service_expire = service.expire.replace(tzinfo=pytz.utc)
 
-        if not get_check_label(service.user_id, cache_db) and service_expire - time_now  < timedelta_2:
-            user = db_user.get_user(service.user_id, db) 
+        if service.status == ServiceStatus.ENABLE and not get_check_label(service.service_id, cache_db) and service_expire - time_now  < timedelta_2:
+            
+            # if user.tel_id is not None:
 
-            if user.tel_id is not None:
-
-                agent = db_agent.get_agent_by_user_id(service.agent_id, db)
+            #     agent = db_agent.get_agent_by_user_id(service.agent_id, db)
 
                 # payload = {
                 #     'tel_id': user.tel_id,
@@ -63,14 +63,13 @@ while True:
                 # }
                 # notification_worker.apply_async(args=(payload,))
 
-            set_check_label(service.user_id, cache_db)
+            set_check_label(service.service_id, cache_db)
 
-        if not get_check_label(service.user_id, cache_db) and service_expire - time_now < timedelta_1:
-            user = db_user.get_user(service.user_id, db)
+        if service.status == ServiceStatus.ENABLE and not get_check_label(service.service_id, cache_db) and service_expire - time_now < timedelta_1:
 
-            if user.tel_id is not None:
+            # if user.tel_id is not None:
 
-                agent = db_agent.get_agent_by_user_id(service.agent_id, db)
+            #     agent = db_agent.get_agent_by_user_id(service.agent_id, db)
 
                 # payload = {
                 #     'tel_id': user.tel_id,
@@ -81,12 +80,10 @@ while True:
                 # }
                 # notification_worker.apply_async(args=(payload,))
                 
-            set_check_label(service.user_id, cache_db)
+            set_check_label(service.service_id, cache_db)
 
-        if time_now > service_expire :
-            
-            user = db_user.get_user(service.user_id, db)
-
+        if service.status == ServiceStatus.ENABLE and time_now > service_expire :
+        
             status_code ,resp = block_ssh_account(service.server_ip, service.username)
 
             if status_code == 2419 :
@@ -97,14 +94,13 @@ while True:
                 logging.info(f'account block failed [server: {service.server_ip} -username: {service.username} -status_code: {resp.status_code}, -content: {resp.content}]')
                 continue
             
-            db_server.decrease_ssh_accounts_number(service.server_ip, db) 
-            db_ssh_service.change_status(service.service_id, Status.DISABLE, db)
+            db_ssh_service.change_status(service.service_id, ServiceStatus.DISABLE, db)
 
-            logging.info(f'account blocked [server: {service.server_ip} -username: {service.username}]')
-            
-            if user.tel_id is not None:
+            logging.info(f'[expire] account blocked [server: {service.server_ip} -username: {service.username}]')
+        
+            # if user.tel_id is not None:
 
-                agent = db_agent.get_agent_by_user_id(service.agent_id, db)
+            #     agent = db_agent.get_agent_by_user_id(service.agent_id, db)
 
                 # payload = {
                 #     'tel_id': user.tel_id,
@@ -115,4 +111,22 @@ while True:
                 # }
                 # notification_worker.apply_async(args=(payload,))
 
-    sleep(60)
+    for service in disable_services:
+        if service.status == ServiceStatus.DISABLE and time_now - service_expire > timedelta(days=30):
+
+            status_code ,resp = delete_ssh_account(service.server_ip, service.username)
+
+            if status_code == 2419 :
+                logging.info(f'account delete failed [server: {service.server_ip} -username: {service.username} -status_code: {resp.status_code}, -content: {resp.content}]')
+                continue
+
+            if status_code != 200:
+                logging.info(f'account delete failed [server: {service.server_ip} -username: {service.username} -status_code: {resp.status_code}, -content: {resp.content}]')
+                continue
+            
+            db_server.decrease_ssh_accounts_number(service.server_ip, db) 
+            db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db)
+
+            logging.info(f'[deleted] account deleted [server: {service.server_ip} -username: {service.username}]')
+
+    sleep(300)
