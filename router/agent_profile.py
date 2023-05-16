@@ -14,7 +14,8 @@ from schemas import (
     UpdateAgentPassword,
     UpdateAgentBotToken,
     TokenUser,
-    UserRole
+    UserRole,
+    ServiceStatus
 )
 from typing import List
 from db import db_user, db_ssh_service
@@ -26,7 +27,7 @@ from financial_api.user import get_balance
 router = APIRouter(prefix='/agent', tags=['Agent-Profile'])
 
 @router.get('/users', response_model= List[UsersInfoAgentResponse], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}}, tags=['Agent-Menagement'])
-def get_all_agent_users(username: str= Query(None,description='This filed (username) is For Admin'), number_day_to_expire: int= Query(..., gt=0) ,user_status: Status= Status.ALL, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
+def get_all_agent_users(username: str= Query(None,description='This filed (username) is For Admin'), number_day_to_expire: int= Query(default=0, gt=0) ,user_status: Status= Status.ALL, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
     
     if current_user.role == UserRole.ADMIN and username is not None:
         agent = db_user.get_user_by_username(username, db)
@@ -38,14 +39,25 @@ def get_all_agent_users(username: str= Query(None,description='This filed (usern
     else:
         user_id = current_user.user_id
 
-    start_time = datetime.now() 
-    end_time = datetime.now() + timedelta(days= number_day_to_expire)
+
+    if number_day_to_expire is None :
+        args = {'agent_id': user_id, 'db': db}
+        ssh_service = db_ssh_service.get_services_by_agent_id
+    
+    else:
+        start_time = datetime.now() 
+        end_time = datetime.now() + timedelta(days= number_day_to_expire)
+        
+        args = {'agent_id': user_id, 'start_time': start_time, 'end_time': end_time, 'db': db}
+        ssh_service = db_ssh_service.get_services_by_agent_and_range_time
+    
     
     if user_status == Status.ALL:
-        services = db_ssh_service.get_services_by_agent_and_range_time(user_id, start_time, end_time, db)
-    
+        services = ssh_service(**args)
+
     else : 
-        services = db_ssh_service.get_services_by_agent_and_range_time(user_id, start_time, end_time, db, status= user_status)
+        args['status'] = user_status
+        services = ssh_service(**args)
     
     return services
 
@@ -72,16 +84,20 @@ def get_agent_information(username: str= Query(None,description='This filed (age
     all_services = 0
     enable_services = 0
     disable_services = 0
+    deleted_services = 0
 
     if services :
         all_services = len(services) 
 
-        for user in services:
-            if user.status == Status.ENABLE:
+        for service in services:
+            if service.status == ServiceStatus.ENABLE:
                 enable_services += 1
 
-            elif user.status == Status.DISABLE:
+            elif service.status == ServiceStatus.DISABLE:
                 disable_services += 1
+
+            elif service.status == ServiceStatus.DELETED:
+                deleted_services += 1
 
     status_code, resp = get_balance(user_id)
     
@@ -103,8 +119,9 @@ def get_agent_information(username: str= Query(None,description='This filed (age
         'bot_token': user.bot_token,
         'username': user.username,
         'total_user': all_services,
-        'number_of_enable_services': enable_services,
-        'number_of_disable_services': disable_services,
+        'enable_ssh_services': enable_services,
+        'disable_ssh_services': disable_services,
+        'deleted_ssh_services': deleted_services,
         'role': user.role,
         'status': user.status
     }
