@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status, APIRouter
 from fastapi.security import OAuth2PasswordRequestForm
 from db import db_user
 from db.database import get_db
-from schemas import Token, UserRole, Status
+from schemas import Token, UserRole, UserStatus
 from auth.auth import authenticate_user, create_access_token
 
 
@@ -36,7 +36,7 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
     if user == False:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
     
-    if user.status == Status.DISABLE:
+    if user.status == UserStatus.DISABLE:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="This Username is Disable")
 
     access_token = create_access_token(
