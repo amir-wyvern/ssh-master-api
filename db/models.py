@@ -9,7 +9,10 @@ from sqlalchemy import (
     )
 from schemas import (
     UserRole,
-    Status
+    ServerStatus,
+    ServiceStatus,
+    InterfaceStatus,
+    UserStatus
 )   
 
 class DbUser(Base):
@@ -24,7 +27,7 @@ class DbUser(Base):
     bot_token = Column(String(100), index=True, nullable=True, unique= True)
     username = Column(String(100), index=True, nullable=False, unique= True)
     password = Column(String(100), nullable=False)
-    status = Column(Enum(Status), index=True, nullable=False)
+    status = Column(Enum(UserStatus), index=True, nullable=False)
     role = Column(Enum(UserRole), index=True, nullable=False)
 
 
@@ -40,7 +43,7 @@ class DbServer(Base):
     max_users = Column(Integer, nullable=False)
     ssh_accounts_number = Column(Integer, nullable=False)
     v2ray_accounts_number = Column(Integer, nullable=False)
-    status = Column(Enum(Status), index=True, nullable=False)
+    status = Column(Enum(ServerStatus), index=True, nullable=False)
 
 
 # class DbV2rayInterface(Base):
@@ -75,7 +78,7 @@ class DbSshInterface(Base):
     price = Column(Integer,nullable=False)
     traffic = Column(Integer,nullable=False)
     duration = Column(Integer,nullable=False)
-    status = Column(Enum(Status), index=True, nullable=False)
+    status = Column(Enum(InterfaceStatus), index=True, nullable=False)
 
 
 class DbSshService(Base):
@@ -98,5 +101,5 @@ class DbSshService(Base):
 
     created = Column(DateTime, index=True, nullable=False)
     expire = Column(DateTime, index=True, nullable=False)
-    status = Column(Enum(Status), index=True, nullable=False)
+    status = Column(Enum(ServiceStatus), index=True, nullable=False)
 
