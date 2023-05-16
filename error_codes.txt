@@ -21,7 +21,7 @@
 2422= Username is already have a service 
 2423= chat_id already exists
 2424= bot_token already exists
-2425= this chat_id have not any service
+2425= this chat_id have not any active service
 2426= Interface_id is disable
 2427= The Server [{server_ip}] has disable
 2428= Interface_id already has this status
@@ -30,6 +30,10 @@
 2431= server already has this status
 2432= you shoud send at least username or chat_id
 2433= This Username have not any service
+2434= The user is blocked
+2435= There is no interface or server for renew config
+2436= There is no best interface for renew config
+2437= This service had deleted
 
 # financial
 1003= There was a problem in registering the deposit request
@@ -44,13 +48,13 @@
 
 
 # slave
-3403= user is not exist
+3403= user {username} is not exist
 3404= init config already done!
-3406= user already exist
+3406= user {username} already exist
 3500= error [{Exception}]
-3501= create user exception [{Exception}]
 3502= Failed to set password for user {username} : {message} 
 3503= Failed to delete user {username}: {message}'
+3511= create user [{username}] exception [{Exception}]
 
 
 user_576917 3e24523c
