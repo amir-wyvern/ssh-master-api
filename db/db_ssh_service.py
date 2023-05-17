@@ -126,3 +126,21 @@ def change_status(service_id, new_status, db: Session):
     db.commit()
     
     return service    
+
+
+def delete_service(service_id, db:Session):
+
+    service = get_service_by_id(service_id, db)
+    db.delete(service)
+    db.commit()
+
+    return True
+
+def delete_service_via_group(services, db:Session):
+
+    for service in services:
+        service = get_service_by_id(service, db)
+        db.delete(service)
+
+    db.commit()
+    return True
