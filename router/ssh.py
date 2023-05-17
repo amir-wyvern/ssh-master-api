@@ -437,9 +437,7 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     logger.debug(f'successfully deleted ssh account (renew) [agent: {current_user.user_id} -username: {request.username} -server: {service.server_ip}]')
     
     db_server.decrease_ssh_accounts_number(service.server_ip, db) 
-    db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db)
-
-
+    db_ssh_service.delete_service(service.service_id, db)
 
     logger.info(f'send request for create new ssh account (renew) [agent: {current_user.user_id} -username: {request.username} -server: {best_interface.server_ip}]')
     status_code, ssh_resp = create_ssh_account(best_interface.server_ip, request.username, service.password)
