@@ -118,11 +118,11 @@ def update_ssh_interface_status(request: SshInterfaceState, new_status: Interfac
 
 @router.post('/ssh/transfer', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def transfer_ssh_users_to_new_interface(request: UsersTransferToNewInterface ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
-    
+
     old_interface = db_ssh_interface.get_interface_by_id(request.old_interface_id, db)
     if old_interface is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'message': 'Interface_id not exists', 'internal_code': 2410})
-    
+
     new_interface = db_ssh_interface.get_interface_by_id(request.new_interface_id, db)
     if new_interface is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'message': 'Interface_id not exists', 'internal_code': 2410})
@@ -159,6 +159,8 @@ def transfer_ssh_users_to_new_interface(request: UsersTransferToNewInterface ,cu
 
     logger.info(f'delete ssh group account was successfully [server: {old_interface.server_ip}, -users: {disable_old_state_users}]')
     
+    db_ssh_service.delete_service_via_group(enable_old_state_users_structed, db)
+    db_ssh_service.delete_service_via_group(disable_old_state_users, db)
 
     enable_new_users = [{'username': user.username , 'password': user.password} for user in enable_new_users]
     disable_new_users = [{'username': user.username , 'password': user.password} for user in disable_new_users]
