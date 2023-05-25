@@ -69,7 +69,7 @@ def get_user_services_via_telegram(chat_id: str= None,username: str= None, curre
     
     else:
         service = db_ssh_service.get_service_by_username(username, db)
-        if service is None or service.status == ServiceStatus.DISABLE or service.status == ServiceStatus.DELETED:
+        if service is None :
             raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any active service', 'internal_code': 2433})
 
         services = [service]
