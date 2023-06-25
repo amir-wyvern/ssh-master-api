@@ -218,7 +218,7 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
     if service.status == ServiceStatus.DELETED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'This service had deleted ', 'internal_code': 2437})
 
-    if service.agent_id != current_user.user_id:
+    if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
     
     request_new_expire = request.new_expire.replace(tzinfo=pytz.utc)
@@ -267,6 +267,31 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
             if status_code != 200:
                 raise HTTPException(status_code=status_code, detail= resp.json()['detail'] )
 
+    if service.status == ServerStatus.DISABLE:
+        
+        state = False
+        for _ in range(3):
+            server = db_server.get_server_by_ip(service.server_ip, db)
+
+            if server is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': f'Server [{service.server_ip}] is disable', 'internal_code':2421})
+
+            status_code ,resp = unblock_ssh_account(service.server_ip, request.username)
+            
+            if status_code == 2419 :
+                continue
+                # raise HTTPException(status_code= status.HTTP_408_REQUEST_TIMEOUT, detail={'message': f'Connection Error Or Connection Timeout', 'internal_code': 2419})
+                
+            if status_code != 200:
+                continue
+            
+            db_ssh_service.change_status(service.service_id, ServiceStatus.ENABLE, db)
+            state = True
+            break
+        
+        if state == False:
+            raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'] )
+
     db_ssh_service.update_expire(service.service_id, request_new_expire, db)    
 
     return UpdateSshExpireResponse(**{'username': service.username, 'expire': request_new_expire})
@@ -284,7 +309,7 @@ def block_ssh_account_via_agent(request: BlockSsh, current_user: TokenUser= Depe
     if service.status == ServiceStatus.DELETED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'This service had deleted ', 'internal_code': 2437})
 
-    if service.agent_id != current_user.user_id:
+    if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
     
     if service.status == ServiceStatus.DISABLE:
@@ -314,7 +339,7 @@ def unblock_ssh_account_via_agent(request: UnBlockSsh, current_user: TokenUser= 
     if service.status == ServiceStatus.DELETED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'This service had deleted ', 'internal_code': 2437})
 
-    if service.agent_id != current_user.user_id:
+    if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
     
     if service.status == ServiceStatus.ENABLE:
@@ -355,7 +380,7 @@ def delete_ssh_account_via_agent(request: DeleteSsh, current_user: TokenUser= De
     if service.status == ServiceStatus.DELETED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'This service had deleted ', 'internal_code': 2437})
 
-    if service.agent_id != current_user.user_id:
+    if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
     
     logger.debug(f'send request for delete ssh account [agent: {current_user.user_id} -username: {request.username} -server: {service.server_ip}]')
@@ -390,7 +415,7 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     if service.status == ServiceStatus.DELETED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'This service had deleted ', 'internal_code': 2437})
 
-    if service.agent_id != current_user.user_id:
+    if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
 
     interfaces = db_ssh_interface.get_all_interface(db,  InterfaceStatus.ENABLE)
