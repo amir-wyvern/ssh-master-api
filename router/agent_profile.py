@@ -71,11 +71,12 @@ def get_agent_information(username: str= Query(None,description='This filed (age
     if current_user.role == UserRole.ADMIN and username is not None:
 
         agent = db_user.get_user_by_username(username, db)
-        user_id = agent.user_id
-
+        
         if agent is None:
             raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'username could not be found', 'internal_code': 2407})
         
+        user_id = agent.user_id
+
     else:
         user_id = current_user.user_id
 
