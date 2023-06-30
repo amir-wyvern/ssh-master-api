@@ -18,7 +18,6 @@ def create_ssh_account(server_ip, username, password):
     }]}
     try:
         resp = requests.post(url=f'http://{server_ip}:8090/ssh/create', json= data, headers= header(), timeout=20)
-        print(resp, resp.content)
 
         return resp.status_code, resp
     
@@ -36,7 +35,6 @@ def create_ssh_account_via_group(server_ip, users: list):
     
     try:
         resp = requests.post(url=f'http://{server_ip}:8090/ssh/create', json= { 'users': users}, headers= header(), timeout=20)
-        print(resp, resp.content)
 
         return resp.status_code, resp
     
@@ -48,6 +46,7 @@ def create_ssh_account_via_group(server_ip, users: list):
 
     except ReadTimeout:
         return 2419, None
+
 
 def delete_ssh_account(server_ip, username):
     
