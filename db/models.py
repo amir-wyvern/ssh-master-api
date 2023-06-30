@@ -39,7 +39,7 @@ class DbServer(Base):
     root_password = Column(String(50), nullable=False)
     manager_password = Column(String(50), nullable=False)
     ssh_port =  Column(Integer, nullable=False)
-    location = Column(String(100), index=True, unique=True, nullable=False)
+    location = Column(String(100), index=True, nullable=False)
     max_users = Column(Integer, nullable=False)
     ssh_accounts_number = Column(Integer, nullable=False)
     v2ray_accounts_number = Column(Integer, nullable=False)
