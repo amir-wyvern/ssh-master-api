@@ -1,8 +1,9 @@
 from sqlalchemy.orm.session import Session
-from db.models import DbSshService
+from db.models import DbSshService, DbSshInterface
 from schemas import SshService
 from sqlalchemy import and_
 from datetime import datetime
+from typing import List
 
 def create_ssh(request: SshService, db: Session):
     
@@ -26,7 +27,6 @@ def create_ssh(request: SshService, db: Session):
     db.add(service)
     db.commit()
     db.refresh(service)
-
     return service
 
 
@@ -144,3 +144,19 @@ def delete_service_via_group(services, db:Session):
 
     db.commit()
     return True
+
+
+def transfer_service(services: List[DbSshService], new_interface: DbSshInterface, db:Session):
+
+    for user in services:
+        service = db.query(DbSshService).filter(DbSshService.service_id == user.service_id )
+        service.update({
+            DbSshService.interface_id: new_interface.interface_id,
+            DbSshService.server_ip: new_interface.server_ip,
+            DbSshService.port: new_interface.port,
+            DbSshService.limit: new_interface.limit
+        })
+
+    db.commit()
+    
+    return True    
