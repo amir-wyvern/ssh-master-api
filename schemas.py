@@ -167,11 +167,13 @@ class UpdateSshExpire(BaseModel):
 
     username: str
     new_expire: datetime
+    unblock: bool = True
 
 class UpdateSshExpireResponse(BaseModel):
 
     username: str
     expire: datetime
+    unblock: bool = True
 
 class DeleteSsh(BaseModel):
 
@@ -512,6 +514,7 @@ class UsersTransferToNewInterface(BaseModel):
 
     old_interface_id: int
     new_interface_id: int
+    delete_old_users: bool = False
 
 class Token(BaseModel):
     access_token: str
