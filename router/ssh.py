@@ -220,12 +220,13 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
     _, err = create_ssh_account(interface.server_ip, username, password)
     if err:
         logger.info(f'[new ssh] ssh account creation failed [agent: {current_user.user_id} -interface_id: {interface.interface_id} -resp_code: {err.status_code} -error: {err.detail}]')
-        _, err = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
-        if err:
-            logger.info(f'[new ssh] the operation of transferring credit to the agent was not done [agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} -error: {err.detail}]')
-            raise err
-        
-        logger.info(f'[new ssh] the credit was returned to the agent [agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code}]')
+        if current_user.role == UserRole.AGENT:
+            _, err = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
+            if err:
+                logger.info(f'[new ssh] the operation of transferring credit to the agent was not done [agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} -error: {err.detail}]')
+                raise err
+            
+            logger.info(f'[new ssh] the credit was returned to the agent [agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code}]')
         raise err
 
     
