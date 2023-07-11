@@ -23,6 +23,16 @@ from db.database import get_db
 from auth.auth import  get_agent_user
 from datetime import datetime, timedelta
 from financial_api.user import get_balance
+import logging
+
+# Create a file handler to save logs to a file
+file_handler = logging.FileHandler('agent_profile_route.log') 
+file_handler.setLevel(logging.INFO) 
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
+file_handler.setFormatter(formatter) 
+
+logger = logging.getLogger('agent_profile_route.log') 
+logger.addHandler(file_handler) 
 
 router = APIRouter(prefix='/agent', tags=['Agent-Profile'])
 
@@ -80,6 +90,12 @@ def get_agent_information(username: str= Query(None,description='This filed (age
     else:
         user_id = current_user.user_id
 
+
+    resp, err = get_balance(user_id)
+    if err:
+        logger.error(f'[agent info] get balance (error: {err.detail})')
+        raise err
+
     services = db_ssh_service.get_services_by_agent_id(user_id, db) 
 
     all_services = 0
@@ -100,20 +116,12 @@ def get_agent_information(username: str= Query(None,description='This filed (age
             elif service.status == ServiceStatus.DELETED:
                 deleted_services += 1
 
-    status_code, resp = get_balance(user_id)
-    
-    if status_code == 2419:
-        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail= {'message': 'Connection Error Or Connection Timeout', 'internal_code': 2419} )
-
-    elif status_code != 200:
-        raise HTTPException(status_code=status_code, detail= resp.json()['detail'] )
-
     user = db_user.get_user_by_user_id(user_id, db) 
 
     data = {
         'agent_id': user.user_id,
         'chat_id': user.chat_id,
-        'balance': resp.json()['balance'],
+        'balance': resp['balance'],
         'name': user.name,
         'phone_number': user.phone_number,
         'email': user.email,
@@ -136,7 +144,8 @@ def update_agent_password(request: UpdateAgentPassword, current_user: TokenUser=
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
 
     db_user.update_password(current_user.user_id, request.password, db) 
-    
+    logger.info(f'[change agent password] successfully (user_id: {current_user.user_id})')
+
     return 'the agent password successfully has changed'
 
 
@@ -147,9 +156,7 @@ def update_agent_bot_token(request: UpdateAgentBotToken, current_user: TokenUser
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
 
     db_user.update_bot_token(current_user.user_id, request.bot_token, db)
-    
+    logger.info(f'[change agent bot token] successfully (user_id: {current_user.user_id})')
+
     return 'the agent bot_token successfully has changed'
-
-
-
 

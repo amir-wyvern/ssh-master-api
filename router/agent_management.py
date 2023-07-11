@@ -22,8 +22,19 @@ from db.database import get_db
 from financial_api.user import  create_user_if_not_exist
 from auth.auth import get_admin_user
 from typing import List
+import logging
+
+# Create a file handler to save logs to a file
+file_handler = logging.FileHandler('agent_management_route.log') 
+file_handler.setLevel(logging.INFO) 
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
+file_handler.setFormatter(formatter) 
+
+logger = logging.getLogger('agent_management_route.log') 
+logger.addHandler(file_handler) 
 
 router = APIRouter(prefix='/agent', tags=['Agent-Menagement'])
+
 
 @router.post('/new', response_model= str,responses={status.HTTP_409_CONFLICT:{'model':HTTPError}, status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
@@ -39,7 +50,6 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
     if request.bot_token and db_user.get_user_by_bot_token(request.bot_token, db):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'bot_token already exists', 'internal_code': 2424})
     
-    
     data = {
         'chat_id': request.chat_id,
         'name': request.name,
@@ -52,22 +62,21 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
         'role': UserRole.AGENT
     }
 
-    user = db_user.create_user(UserRegisterForDataBase(**data), db)
-    status_code, resp = create_user_if_not_exist(user.user_id)
+    db.begin()
+    user = db_user.create_user(UserRegisterForDataBase(**data), db, commit= False)
+    resp, err = create_user_if_not_exist(user.user_id)
     
-    if status_code == 2419 :
-        db_user.delete_user(user.user_id, db)
-        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'Connection Error Or Connection Timeout', 'internal_code': 2419})
+    if err :
+        db.rollback()
+        raise err
     
-    elif status_code != 200:
-        db_user.delete_user(user.user_id, db)
-        raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+    db.commit()
+    db.refresh()
 
-    # =====================
-    # this part for swager for create a new node for telegram bot
-    # =====================
+    logger.info(f'[creation agent] successfully ({request.username})')
 
     return 'agent successfully registered'
+
 
 @router.post('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def disable_or_enable_agent(request: ChangeAgentStatus, new_status: UserStatus= Query(...), current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
@@ -81,6 +90,7 @@ def disable_or_enable_agent(request: ChangeAgentStatus, new_status: UserStatus= 
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'agent already has this status', 'internal_code': 2430})
 
     db_user.change_status(agent.user_id, new_status, db)
+    logger.info(f'[change agent status] successfully ({request.username})')
 
     return f'successfully change the {agent.username} agent status to {new_status}'
 

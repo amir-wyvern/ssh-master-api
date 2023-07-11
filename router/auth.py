@@ -29,8 +29,14 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
                 detail="Unkown Scopes",
         )
     
-    user_unchecked = db_user.get_user_by_username(form_data.username, db) 
-
+    try:
+        for _ in range(2):
+            user_unchecked = db_user.get_user_by_username(form_data.username, db) 
+            break
+        
+    except Exception as e:
+        raise e
+    
     user = authenticate_user(user_unchecked, form_data.password, getattr(UserRole, role.upper()) )
 
     if user == False:

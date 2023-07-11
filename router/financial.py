@@ -26,25 +26,16 @@ import string
 import hashlib
 import logging
 
-router = APIRouter(prefix='/financial', tags=['Financial'])
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-# Create a console handler to show logs on terminal
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
 # Create a file handler to save logs to a file
-file_handler = logging.FileHandler('financial_router.log')
-file_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+file_handler = logging.FileHandler('financial_route.log') 
+file_handler.setLevel(logging.INFO) 
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
+file_handler.setFormatter(formatter) 
 
+logger = logging.getLogger('financial_route.log') 
+logger.addHandler(file_handler) 
+
+router = APIRouter(prefix='/financial', tags=['Financial'])
 
 def generate_password():
 
@@ -64,14 +55,12 @@ def update_agent_balance(request: SetNewBalance, current_user: TokenUser= Depend
     if agent is None:
         raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail= {'message': 'username could not be found', 'internal_code': 2407} )
 
-    status_code, resp = set_balance(agent.user_id, request.new_balance)
-
-    if status_code == 2419:
-        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail= {'message': 'Connection Error Or Connection Timeout', 'internal_code': 2419} )
-
-    elif status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail= resp.json()['detail'] )
+    resp, err = set_balance(agent.user_id, request.new_balance)
+    if err:
+        logger.error(f'[update agent balance] error in set balance (username:{agent.username}, error: {err.detail})')
+        raise err
     
+    logger.info(f'[update agent balance] successfully (username: {request.username})')
     return 'request balance update was successfully'
 
 
@@ -88,19 +77,15 @@ def financial_deposit_request(request: DepositRequest, current_user: TokenUser= 
     if current_user.role == UserRole.ADMIN :
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
 
-    logger.info(f'send request for deposit request [agent: {current_user.user_id} -price: {request.value}]')
 
-    status_code, resp = deposit_request(current_user.user_id, request.value)
-
-    if status_code == 2419:
-        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail= {'message': 'Connection Error Or Connection Timeout', 'internal_code': 2419} )
-
-    if status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail= resp.json()['detail'] )
+    resp, err = deposit_request(current_user.user_id, request.value)
+    if err:
+        logger.error(f'[deposit request] error (agent: {current_user.user_id} -price: {request.value} -error: {err.detail})')
+        raise err
     
-    logger.info(f'successfully deposit request [agent: {current_user.user_id} -price: {request.value}]')
+    logger.info(f'[deposit request] successfully (agent: {current_user.user_id} -price: {request.value})')
     
-    return resp.json()
+    return resp
 
 
 @router.post('/deposit/confirmation', response_model= str, responses={status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
@@ -109,16 +94,12 @@ def financial_deposit_confirmation(request: DepositConfirmation, current_user: T
     if current_user.role == UserRole.ADMIN :
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
 
-    logger.info(f'send request for deposit confirmation [agent: {current_user.user_id} -tx_hash: {request.tx_hash}]')
-    status_code, resp = deposit_confirmation(current_user.user_id, request.tx_hash)
+    resp, err = deposit_confirmation(current_user.user_id, request.tx_hash)
+    if err:
+        logger.error(f'[deposit comfirmation] error (agent: {current_user.user_id} -tx_hash: {request.tx_hash} -error: {err.detail})')
+        raise err
 
-    if status_code == 2419:
-        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail= {'message': 'Connection Error Or Connection Timeout', 'internal_code': 2419} )
-
-    if status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail= resp.json()['detail'] )
-    
-    logger.info(f'successfully deposit confirmation [agent: {current_user.user_id} -tx_hash: {request.tx_hash}]')
+    logger.info(f'[deposit comfirmation] successfully (agent: {current_user.user_id} -tx_hash: {request.tx_hash})')
     
     return 'confirmation deposit was successfully'
 

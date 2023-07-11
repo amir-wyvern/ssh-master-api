@@ -24,6 +24,16 @@ from slave_api.server import get_users
 from auth.auth import get_admin_user
 
 from typing import List
+import logging
+
+# Create a file handler to save logs to a file
+file_handler = logging.FileHandler('server_route.log') 
+file_handler.setLevel(logging.INFO) 
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
+file_handler.setFormatter(formatter) 
+
+logger = logging.getLogger('server_route.log') 
+logger.addHandler(file_handler) 
 
 router = APIRouter(prefix='/server', tags=['Server'])
 
@@ -50,6 +60,7 @@ def add_new_server(request: NewServer, current_user: TokenUser= Depends(get_admi
     #     raise HTTPException(status_code= 403, detail={'message': f'error {resp.content}', 'internal_code': 1403})
     
     server = db_server.create_server(request, db)
+    logger.info(f'[new server] successfully (server_ip: {request.server_ip})')
 
     return 'Server successfully created'
 
@@ -81,16 +92,28 @@ def update_server_status(request: UpdateServerStatus , new_status: ServerStatus 
     if server.status == new_status:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'server already has this status', 'internal_code': 2431})
 
-    if new_status == ServerStatus.DISABLE:
+    try:
+        # ==================== Begin ====================
+        db.begin()
+        if new_status == ServerStatus.DISABLE:
 
-        interfaces = db_ssh_interface.get_interface_by_server_ip(request.server_ip, db, status= InterfaceStatus.ENABLE)
+            interfaces = db_ssh_interface.get_interface_by_server_ip(request.server_ip, db, status= InterfaceStatus.ENABLE)
 
-        for interface in interfaces:
+            for interface in interfaces:
+                
+                db_ssh_interface.change_status(interface.interface_id, InterfaceStatus.DISABLE, db, commit= False)
             
-            db_ssh_interface.change_status(interface.interface_id, InterfaceStatus.DISABLE, db)
+        db_server.change_status(request.server_ip, new_status, db, commit= False)
+        db.commit()
+        # ==================== Commit ====================
         
-    db_server.change_status(request.server_ip, new_status, db)
+    except Exception as e:
+        logger.error(f'[change server status] error while change status to {new_status} (server_ip: {request.server_ip} -error: {e})')
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
 
+    logger.info(f'[change server status] successfully (server_ip: {request.server_ip}) -status: {new_status})')
+    
     return 'Server status successfully changed!'
 
 
@@ -102,15 +125,12 @@ def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
     
-    status_code, resp = get_users(server_ip)
+    resp, err = get_users(server_ip)
+    if err:
+        logger.error(f'[get users] error (server_ip: {server_ip}) -detail: {err.detail})')
+        raise err
 
-    if status_code == 2419 :
-        raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': f'networt error [{server_ip}]', 'internal_code': 2419})
-        
-    if status_code != 200:
-        raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
-
-    return resp.json()
+    return resp
 
 
 @router.post('/max_users', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
@@ -122,5 +142,6 @@ def update_server_max_users(request: UpdateMaxUserServer ,current_user: TokenUse
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'message': 'Server not exists', 'internal_code': 2406})
     
     db_server.update_max_user(request.server_ip, request.new_max_user, db)
+    logger.info(f'[change max user] successfully (server_ip: {request.server_ip} -new_max_users: {request.new_max_user})')
 
     return 'Server max_user successfully updated!'
