@@ -1,4 +1,5 @@
 from requests.exceptions import ConnectTimeout, ConnectionError, ReadTimeout
+from fastapi import HTTPException, status
 import requests
 import os
 
@@ -19,21 +20,27 @@ def deposit_request(user_id, value):
             'user_id': user_id,
             'value': value
         }
+        for _ in range(2):
+            resp = requests.post('http://localhost:8050/deposit/request', json=data, headers= header(), timeout=10)
+            if resp.status_code == 200:
+                break
 
-        resp = requests.post('http://localhost:8050/deposit/request', json=data, headers= header(), timeout=10)
-        return resp.status_code, resp
+        if resp.status_code != 200:
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+        
+        return resp.json(), None
 
     except ConnectTimeout:
 
-        return 2419, None 
+        return None, HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'Connection Timeout', 'internal_code': 2419})
     
     except ConnectionError:
 
-        return 2419, None
+        return None, HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'ConnectionError', 'internal_code': 2419})
 
     except ReadTimeout:
 
-        return 2419, None
+        return None, HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'ReadTimeout', 'internal_code': 2419})
 
     
 def deposit_confirmation(user_id, tx_hash):
@@ -44,20 +51,28 @@ def deposit_confirmation(user_id, tx_hash):
             'tx_hash': tx_hash,
             'user_id': user_id
         }
+        for _ in range(2):
+            resp = requests.post('http://localhost:8050/deposit/confirmation', json=data, headers= header(), timeout=10)
+            if resp.status_code == 200:
+                break
 
-        resp = requests.post('http://localhost:8050/deposit/confirmation', json=data, headers= header(), timeout=10)
-        return resp.status_code, resp
+        if resp.status_code != 200:
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+        
+        return resp.json(), None
 
     except ConnectTimeout:
 
-        return 2419, None
+        return None, HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'Connection Timeout', 'internal_code': 2419})
     
     except ConnectionError:
 
-        return 2419, None
+        return None, HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'ConnectionError', 'internal_code': 2419})
 
     except ReadTimeout:
 
-        return 2419, None
+        return None, HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail={'message': 'ReadTimeout', 'internal_code': 2419})
+
+
 
 
