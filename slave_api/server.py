@@ -20,7 +20,7 @@ def get_users(server_ip):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
 

@@ -26,7 +26,7 @@ def deposit_request(user_id, value):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
 
@@ -57,7 +57,7 @@ def deposit_confirmation(user_id, tx_hash):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
 

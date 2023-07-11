@@ -24,7 +24,7 @@ def create_ssh_account(server_ip, username, password):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
     
@@ -51,7 +51,7 @@ def create_ssh_account_via_group(server_ip, users: list):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
     
@@ -78,7 +78,7 @@ def delete_ssh_account(server_ip, username):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
     
@@ -104,7 +104,7 @@ def delete_ssh_account_via_group(server_ip, users):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
     
@@ -129,9 +129,9 @@ def block_ssh_account(server_ip, username):
             resp = requests.post(url=f'http://{server_ip}:8090/ssh/block', json= data, headers= header(), timeout=20)
             if resp.status_code == 200:
                 break
-
+        
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
 
@@ -157,7 +157,7 @@ def block_ssh_account_via_groups(server_ip, users):
                 break
         
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
 
@@ -185,7 +185,7 @@ def unblock_ssh_account(server_ip, username):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
 
@@ -211,7 +211,7 @@ def unblock_ssh_account_via_groups(server_ip, users):
                 break
 
         if resp.status_code != 200:
-            return None, HTTPException(status_code=resp.status_code ,detail= resp.content)
+            return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
     
