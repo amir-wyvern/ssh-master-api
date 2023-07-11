@@ -1,4 +1,4 @@
-from db import db_ssh_service, db_user, db_server
+from db import db_ssh_service, db_server
 from db.database import get_db
 from datetime import datetime, timedelta
 from celery_tasks.tasks import NotificationCeleryTask
@@ -28,11 +28,9 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-
 cache_db = get_redis_cache().__next__()
 
 _, notification_worker = create_worker_from(NotificationCeleryTask)
-
 
 timedelta_2 = timedelta(days=2)
 timedelta_1 = timedelta(days=1)
@@ -51,7 +49,7 @@ while True:
             service_expire = service.expire.replace(tzinfo=pytz.utc)
 
             if service.status == ServiceStatus.ENABLE and not get_check_label(service.service_id, cache_db) and service_expire - time_now  < timedelta_2:
-                
+        
                 # if user.tel_id is not None:
 
                 #     agent = db_agent.get_agent_by_user_id(service.agent_id, db)
@@ -85,21 +83,15 @@ while True:
                 set_check_label(service.service_id, cache_db)
 
             if service.status == ServiceStatus.ENABLE and time_now > service_expire :
+
+                resp , err = block_ssh_account(service.server_ip, service.username)
+                if err:
+                    logger.error(f'[expire] failed account blocking [server: {service.server_ip} -username: {service.username} -resp_code: {err.status_code} -detail: {resp.detail}]')
+                    continue
             
-                status_code ,resp = block_ssh_account(service.server_ip, service.username)
-
-                if status_code == 2419 :
-                    logging.info(f'account block failed [server: {service.server_ip} -username: {service.username} -status_code: {resp.status_code}, -content: {resp.content}]')
-                    continue
-
-                if status_code != 200:
-                    logging.info(f'account block failed [server: {service.server_ip} -username: {service.username} -status_code: {resp.status_code}, -content: {resp.content}]')
-                    continue
-                
                 db_ssh_service.change_status(service.service_id, ServiceStatus.DISABLE, db)
+                logger.info(f'[expire] successfully account blocked  [server: {service.server_ip} -username: {service.username}]')
 
-                logging.info(f'[expire] account blocked [server: {service.server_ip} -username: {service.username}]')
-            
                 # if user.tel_id is not None:
 
                 #     agent = db_agent.get_agent_by_user_id(service.agent_id, db)
@@ -114,25 +106,31 @@ while True:
                     # notification_worker.apply_async(args=(payload,))
 
         for service in disable_services:
-            if service.status == ServiceStatus.DISABLE and time_now - service_expire > timedelta(days=30):
 
-                status_code ,resp = delete_ssh_account(service.server_ip, service.username)
+            time_now = datetime.now().replace(tzinfo=pytz.utc)
+            service_expire = service.expire.replace(tzinfo=pytz.utc)
+        
+            if service.status == ServiceStatus.DISABLE and time_now - service_expire > timedelta(days=7):
 
-                if status_code == 2419 :
-                    logging.info(f'account delete failed [server: {service.server_ip} -username: {service.username} -status_code: {resp.status_code}, -content: {resp.content}]')
+                resp ,err = delete_ssh_account(service.server_ip, service.username)
+                if err:
+                    logger.error(f'[delete] failed account deleted (server: {service.server_ip} -username: {service.username} -resp_code: {err.status_code} -detail: {err.detail})')
                     continue
+                    
+                try:
+                    db.begin()
+                    db_server.decrease_ssh_accounts_number(service.server_ip, db) 
+                    db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db)
+                    db.commit()
 
-                if status_code != 200:
-                    logging.info(f'account delete failed [server: {service.server_ip} -username: {service.username} -status_code: {resp.status_code}, -content: {resp.content}]')
-                    continue
-                
-                db_server.decrease_ssh_accounts_number(service.server_ip, db) 
-                db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db)
+                except Exception as e:
+                    logger.error(f'[delete] error in database (username: {service.username} -error: {e})')
+                    db.rollback()
+                    continue                    
 
-                logging.info(f'[deleted] account deleted [server: {service.server_ip} -username: {service.username}]')
-    
+                logger.info(f'[delete] successfully account deleted [server: {service.server_ip} -username: {service.username}]')
+
     except Exception as e:
-
-        logging.info(f'[exception]  [{e}]')
+        logger.error(f'[exception]  [{e}]')
     
     sleep(300)
