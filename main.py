@@ -14,6 +14,10 @@ from db import models, db_user
 from db.database import engine, get_db
 from dotenv import load_dotenv
 import os 
+import logging
+
+root_logger = logging.getLogger()
+root_logger.handlers.clear()
 
 load_dotenv()
 
