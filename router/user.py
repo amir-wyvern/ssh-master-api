@@ -55,12 +55,6 @@ def generate_password():
 
     return hashed_password
 
-
-@router.get('/test')
-def test():
-    print(logger)
-    logger.info('user')
-
 @router.get('/services', response_model= UserServices, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}, status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def get_user_services_via_telegram(chat_id: str= None,username: str= None, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
