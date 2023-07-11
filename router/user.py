@@ -161,14 +161,15 @@ def add_new_user_via_service(request: NewUserViaService, service_type: ServiceTy
         }
         
         try:
-            db.begin()
             service = db_ssh_service.create_ssh(SshService(**service_data), db, commit= False)
             db_server.increase_ssh_accounts_number(interface.server_ip, db, commit= False)
             db.commit()
 
         except Exception as e:
+            logger.error(f'[new service] error in database (agent_id: {current_user.user_id} -username: {request.username} -interface_id: {request.interface_id})')
             db.rollback() 
-            raise e
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
 
+        logger.info(f'[new service] successfully (agent_id: {current_user.user_id} -username: {request.username} -interface_id: {request.interface_id})')
         return {'service_id': service.service_id, 'agent_id': agent_id}
 

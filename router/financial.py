@@ -55,7 +55,7 @@ def update_agent_balance(request: SetNewBalance, current_user: TokenUser= Depend
     if agent is None:
         raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail= {'message': 'username could not be found', 'internal_code': 2407} )
 
-    resp, err = set_balance(agent.user_id, request.new_balance)
+    _, err = set_balance(agent.user_id, request.new_balance)
     if err:
         logger.error(f'[update agent balance] error in set balance (username:{agent.username}, error: {err.detail})')
         raise err
@@ -94,7 +94,7 @@ def financial_deposit_confirmation(request: DepositConfirmation, current_user: T
     if current_user.role == UserRole.ADMIN :
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
 
-    resp, err = deposit_confirmation(current_user.user_id, request.tx_hash)
+    _, err = deposit_confirmation(current_user.user_id, request.tx_hash)
     if err:
         logger.error(f'[deposit comfirmation] error (agent: {current_user.user_id} -tx_hash: {request.tx_hash} -error: {err.detail})')
         raise err

@@ -94,7 +94,6 @@ def update_server_status(request: UpdateServerStatus , new_status: ServerStatus 
 
     try:
         # ==================== Begin ====================
-        db.begin()
         if new_status == ServerStatus.DISABLE:
 
             interfaces = db_ssh_interface.get_interface_by_server_ip(request.server_ip, db, status= InterfaceStatus.ENABLE)

@@ -134,27 +134,25 @@ def transfer_ssh_users_to_new_interface(request: UsersTransferToNewInterface ,cu
     disable_old_state_users = db_ssh_service.get_services_by_interface_id(old_interface.interface_id, db, status= ServiceStatus.DISABLE)
     
     # ============================ Begin ============================ 
-    db.begin()
-
     db_ssh_service.transfer_service(enable_old_state_users, new_interface, db, commit=False)
     db_ssh_service.transfer_service(disable_old_state_users, new_interface, db, commit=False)
 
     if request.delete_old_users:
 
         enable_old_state_users_structed = [{'username': user.username} for user in enable_old_state_users]
-        resp, err = delete_ssh_account_via_group(old_interface.server_ip, enable_old_state_users_structed)
+        _, err = delete_ssh_account_via_group(old_interface.server_ip, enable_old_state_users_structed)
         if err:
-            db.rollback()
             logger.error(f'[transfer users interface] deleted ssh enable group account failed (resp_code: {err.status_code} -content: {err.detail})')
+            db.rollback()
             raise err
 
         logger.info(f'[transfer users interface] delete ssh enable group account was successfully (server: {old_interface.server_ip}, -users: {enable_old_state_users_structed})')
 
         disable_old_state_users_structed = [{'username': user.username} for user in disable_old_state_users]
-        resp, err = delete_ssh_account_via_group(old_interface.server_ip, disable_old_state_users_structed)
+        _, err = delete_ssh_account_via_group(old_interface.server_ip, disable_old_state_users_structed)
         if err:
-            db.rollback()
             logger.error(f'[transfer users interface] deleted ssh disable group account failed (resp_code: {err.status_code} -content: {err.detail})')
+            db.rollback()
             raise err
 
         logger.info(f'[transfer users interface] delete ssh disable group account was successfully (server: {old_interface.server_ip}, -users: {enable_old_state_users_structed})')
@@ -164,20 +162,19 @@ def transfer_ssh_users_to_new_interface(request: UsersTransferToNewInterface ,cu
 
     new_users = enable_new_users + disable_new_users
 
-    resp, err = create_ssh_account_via_group(new_interface.server_ip, new_users)
+    _, err = create_ssh_account_via_group(new_interface.server_ip, new_users)
     
     if err:
-        db.rollback()
         logger.error(f'[transfer users interface] ssh group account creation failed (resp_code: {err.status_code} -content: {err.detail})')
+        db.rollback()
         raise err
     
     logger.info(f'[transfer users interface] the ssh group account was created successfully (server: {new_interface.server_ip} -users: {new_users})')
 
-    resp, err = block_ssh_account_via_groups(new_interface.server_ip, disable_new_users)
-    
+    _, err = block_ssh_account_via_groups(new_interface.server_ip, disable_new_users)
     if err:
-        db.rollback()
         logger.error(f'[transfer users interface] ssh group account creation failed (resp_code: {err.status_code} -content: {err.detail})')
+        db.rollback()
         raise err
     
     db.commit()

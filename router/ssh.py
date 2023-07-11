@@ -112,12 +112,10 @@ def create_test_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(
         if db_ssh_service.get_service_by_username(username, db) == None:
             break
 
-    resp, err = create_ssh_account(interface.server_ip, username, password)
-    
+    _, err = create_ssh_account(interface.server_ip, username, password)
     if err:
         logger.error(f'[new test ssh] ssh account creation failed (agent: {current_user.user_id} -username: {username} -interface_id: {interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
-
     
     service_data = {
         'server_ip': interface.server_ip,
@@ -138,15 +136,18 @@ def create_test_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(
 
     # ================= Begin =================
     try:
-        db.begin()
-        db_ssh_service.create_ssh(SshService(**service_data), db)
-        db_server.increase_ssh_accounts_number(interface.server_ip, db)
+        service = db_ssh_service.create_ssh(SshService(**service_data), db, commit=False)
+        db_server.increase_ssh_accounts_number(interface.server_ip, db, commit=False)
         db.commit()
-        db.refresh()
-    
+        db.refresh(service)
+
     except Exception as e:
         logger.error(f'[new test ssh] error in database (agent: {current_user.user_id} -username: {username} -interface_id: {interface.interface_id} -error: {e})')
         db.rollback()
+        _, err = delete_ssh_account(interface.server_ip, username)
+        if err:
+            logger.error(f'[delete] error (agent: {current_user.user_id} -username: {username} -resp_code: {err.status_code} -detail: {err.detail})')
+        
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
     # ================= Commit =================
 
@@ -209,17 +210,17 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
             logger.error(f'[new ssh] Insufficient balance (agent_id: {current_user.user_id} -balance: {balance} -interface_price: {interface.price})')
             raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail= {'message': 'Insufficient balance', 'internal_code': 1412} )
 
-        resp, err = transfer(current_user.user_id, ADMID_ID_FOR_FINANCIAl, interface.price)
+        _, err = transfer(current_user.user_id, ADMID_ID_FOR_FINANCIAl, interface.price)
         if err:
             logger.error(f'[new ssh] transfer credit Faied (agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code}, error: {err.detail})')
             raise err
         
         logger.info(f'[new ssh] successfully transfered credit (agent: {current_user.user_id} -price: {interface.price})')
 
-    resp, err = create_ssh_account(interface.server_ip, username, password)
+    _, err = create_ssh_account(interface.server_ip, username, password)
     if err:
         logger.info(f'[new ssh] ssh account creation failed [agent: {current_user.user_id} -interface_id: {interface.interface_id} -resp_code: {err.status_code} -error: {err.detail}]')
-        resp, err = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
+        _, err = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
         if err:
             logger.info(f'[new ssh] the operation of transferring credit to the agent was not done [agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} -error: {err.detail}]')
             raise err
@@ -247,15 +248,18 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
 
     # ================= Begin =================
     try:
-        db.begin()
-        db_ssh_service.create_ssh(SshService(**service_data), db)
-        db_server.increase_ssh_accounts_number(interface.server_ip, db)
+        service = db_ssh_service.create_ssh(SshService(**service_data), db, commit=False)
+        db_server.increase_ssh_accounts_number(interface.server_ip, db, commit=False)
         db.commit()
-        db.refresh()
+        db.refresh(service)
     
     except Exception as e:
         logger.error(f'[new ssh] error in database (agent: {current_user.user_id} -username: {username} -interface_id: {interface.interface_id} -error: {e})')
         db.rollback()
+        _, err = delete_ssh_account(interface.server_ip, username)
+        if err:
+            logger.error(f'[delete] error (agent: {current_user.user_id} -username: {username} -resp_code: {err.status_code} -detail: {err.detail})')
+        
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
     # ================= Commit =================
 
@@ -320,7 +324,7 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
                 logger.error(f'[expire] Insufficient balance (agent_id: {current_user.user_id} -balance: {balance} -interface_price: {interface.price})')
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail= {'message': 'Insufficient balance', 'internal_code': 1412} )
             
-            resp, err = transfer(service.agent_id, ADMID_ID_FOR_FINANCIAl, price)
+            _, err = transfer(service.agent_id, ADMID_ID_FOR_FINANCIAl, price)
             if err:
                 logger.error(f'[expire] transfer credit Faied (agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} error: {err.detail})')
                 raise err
@@ -330,7 +334,7 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
 
         else:
 
-            resp, err = transfer(ADMID_ID_FOR_FINANCIAl, service.agent_id, price)
+            _, err = transfer(ADMID_ID_FOR_FINANCIAl, service.agent_id, price)
             if err:
                 logger.error(f'[expire] transfer credit Faied (agent: {current_user.user_id} -price: {price} -resp_code: {err.status_code} error: {err.detail})')
                 raise err
@@ -338,16 +342,15 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
             rollbackTransfer = {'func':transfer ,'args':[service.agent_id, ADMID_ID_FOR_FINANCIAl, price]}
 
     # =================== Begin ===================
-    db.begin()
     db_ssh_service.update_expire(service.service_id, request_new_expire, db, commit= False)
         
     if request.unblock == True:
-        resp, err = unblock_ssh_account(service.server_ip, request.username)
+        _, err = unblock_ssh_account(service.server_ip, request.username)
         if err:
             logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -error: {err.detail})')
             db.rollback() 
             if rollbackTransfer:
-                resp, err = rollbackTransfer['func'](*rollbackTransfer['args'])
+                _, err = rollbackTransfer['func'](*rollbackTransfer['args'])
                 if err:
                     logger.error(f'[expire] transfer credit Faied  (agent: {current_user.user_id} -price: {price} -resp_code: {err.status_code} -error: {err.detail})')
                     raise err 
@@ -383,7 +386,7 @@ def block_ssh_account_via_agent(request: BlockSsh, current_user: TokenUser= Depe
     if service.status == ServiceStatus.DISABLE:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'The user has already been block', 'internal_code': 2415})
 
-    resp ,err = block_ssh_account(service.server_ip, request.username)
+    _ ,err = block_ssh_account(service.server_ip, request.username)
     if err:
         logger.error(f'[block] error (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
@@ -419,7 +422,7 @@ def unblock_ssh_account_via_agent(request: UnBlockSsh, current_user: TokenUser= 
     if server.ssh_accounts_number >= server.max_users:
         raise HTTPException(status_code= status.HTTP_406_NOT_ACCEPTABLE, detail={'message': f'The Server [{service.server_ip}] has reached to max users', 'internal_code': 2411})
 
-    resp, err = unblock_ssh_account(service.server_ip, request.username)
+    _, err = unblock_ssh_account(service.server_ip, request.username)
     if err:
         logger.error(f'[unblock] error (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
@@ -447,15 +450,14 @@ def delete_ssh_account_via_agent(request: DeleteSsh, current_user: TokenUser= De
     if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
     
-    resp ,err = delete_ssh_account(service.server_ip, request.username)
+    _ ,err = delete_ssh_account(service.server_ip, request.username)
     if err:
         logger.error(f'[delete] error (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
     
     try:
-        db.begin()
-        db_server.decrease_ssh_accounts_number(service.server_ip, db) 
-        db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db)
+        db_server.decrease_ssh_accounts_number(service.server_ip, db, commit=False) 
+        db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db, commit=False)
         db.commit()
 
     except Exception as e:
@@ -543,7 +545,6 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     logger.info(f'[renew] ssh account successfully created (agent: {current_user.user_id} -username: {request.username})')
     
     try:
-        db.begin()
         db_server.decrease_ssh_accounts_number(service.server_ip, db, commit= False) 
         db_ssh_service.transfer_service([service], best_interface, db, commit=False)
         db_server.increase_ssh_accounts_number(best_interface.server_ip, db, commit= False)
