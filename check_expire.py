@@ -84,9 +84,9 @@ while True:
 
             if service.status == ServiceStatus.ENABLE and time_now > service_expire :
 
-                resp , err = block_ssh_account(service.server_ip, service.username)
+                _ , err = block_ssh_account(service.server_ip, service.username)
                 if err:
-                    logger.error(f'[expire] failed account blocking [server: {service.server_ip} -username: {service.username} -resp_code: {err.status_code} -detail: {err.detail}]')
+                    logger.error(f'[expire] failed account blocking [server: {service.server_ip} -username: {service.username} -resp_code: {err.status_code} -detail: {resp.detail}]')
                     continue
             
                 db_ssh_service.change_status(service.service_id, ServiceStatus.DISABLE, db)
@@ -119,8 +119,8 @@ while True:
                     
                 try:
                     db.begin()
-                    db_server.decrease_ssh_accounts_number(service.server_ip, db) 
-                    db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db)
+                    db_server.decrease_ssh_accounts_number(service.server_ip, db, commit= False) 
+                    db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db, commit= False)
                     db.commit()
 
                 except Exception as e:
