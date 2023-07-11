@@ -183,6 +183,7 @@ class DeleteSsh(BaseModel):
 class RenewSsh(BaseModel):
 
     username : str
+    new_interface_id: Optional[int]
 
 class BlockSsh(BaseModel):
 
