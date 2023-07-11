@@ -8,7 +8,7 @@ from schemas import (
 from db.models import DbUser
 
 
-def create_user(request: UserRegisterForDataBase, db: Session):
+def create_user(request: UserRegisterForDataBase, db: Session, commit=True):
 
     user = DbUser(
         chat_id= request.chat_id,
@@ -23,8 +23,10 @@ def create_user(request: UserRegisterForDataBase, db: Session):
     )
     db.add(user)
 
-    db.commit()
-    db.refresh(user)
+    if commit:
+        db.commit()
+        db.refresh(user)
+    
     return user
 
 def get_all_users(db:Session, status: Status= None):
@@ -102,10 +104,12 @@ def delete_user(user_id, db:Session):
     return True
 
 
-def change_status(user_id, new_status, db: Session):
+def change_status(user_id, new_status, db: Session, commit=True):
 
     user = db.query(DbUser).filter(DbUser.user_id == user_id )
     user.update({DbUser.status: new_status})
-    db.commit()
+
+    if commit:
+        db.commit()
     
     return True    

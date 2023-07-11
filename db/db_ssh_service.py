@@ -5,7 +5,7 @@ from sqlalchemy import and_
 from datetime import datetime
 from typing import List
 
-def create_ssh(request: SshService, db: Session):
+def create_ssh(request: SshService, db: Session, commit=True):
     
     service = DbSshService(
         server_ip= request.server_ip,
@@ -25,8 +25,10 @@ def create_ssh(request: SshService, db: Session):
     )
     
     db.add(service)
-    db.commit()
-    db.refresh(service)
+    if commit:
+        db.commit()
+        db.refresh(service)
+    
     return service
 
 
@@ -108,22 +110,26 @@ def get_services_by_range_time(start_time: datetime, end_time: datetime, db: Ses
     else:
         return db.query(DbSshService).filter(and_(DbSshService.expire >= start_time, DbSshService.expire <= end_time, DbSshService.status == status)).all()
 
-def update_expire(service_id, new_expire, db: Session):
+def update_expire(service_id, new_expire, db: Session, commit=True):
     
     service = db.query(DbSshService).filter(DbSshService.service_id == service_id )
 
     service.update({DbSshService.expire: new_expire})
-    db.commit()
+    
+    if commit:
+        db.commit()
 
     return service
 
 
-def change_status(service_id, new_status, db: Session):
+def change_status(service_id, new_status, db: Session, commit= True):
 
     service = db.query(DbSshService).filter(DbSshService.service_id == service_id )
 
     service.update({DbSshService.status: new_status})
-    db.commit()
+    
+    if commit:
+        db.commit()
     
     return service    
 
@@ -146,7 +152,7 @@ def delete_service_via_group(services, db:Session):
     return True
 
 
-def transfer_service(services: List[DbSshService], new_interface: DbSshInterface, db:Session):
+def transfer_service(services: List[DbSshService], new_interface: DbSshInterface, db:Session, commit=True):
 
     for user in services:
         service = db.query(DbSshService).filter(DbSshService.service_id == user.service_id )
@@ -157,6 +163,7 @@ def transfer_service(services: List[DbSshService], new_interface: DbSshInterface
             DbSshService.limit: new_interface.limit
         })
 
-    db.commit()
+    if commit:
+        db.commit()
     
     return True    

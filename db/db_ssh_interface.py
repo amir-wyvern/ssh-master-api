@@ -55,11 +55,12 @@ def get_interface_by_location(location, db: Session, status: Status= None):
     else:
         return db.query(DbSshInterface).filter(and_(DbSshInterface.location == location, DbSshInterface.status == status )).all()
     
-def change_status(interface_id, new_status: Status, db: Session):
+def change_status(interface_id, new_status: Status, db: Session, commit=True):
     
     service = db.query(DbSshInterface).filter(DbSshInterface.interface_id == interface_id )
 
     service.update({DbSshInterface.status: new_status})
-    db.commit()
+    if commit:
+        db.commit()
 
     return service

@@ -57,21 +57,24 @@ def update_max_user(server_ip, new_caps, db: Session):
 
     return server
 
-def increase_ssh_accounts_number(server_ip, db: Session):
+def increase_ssh_accounts_number(server_ip, db: Session, commit= True):
 
     server = db.query(DbServer).filter(DbServer.server_ip == server_ip )
-
     server.update({DbServer.ssh_accounts_number: server.first().ssh_accounts_number + 1})
-    db.commit()
+    
+    if commit:
+        db.commit()
 
     return server
 
-def decrease_ssh_accounts_number(server_ip, db: Session):
+def decrease_ssh_accounts_number(server_ip, db: Session, commit= True):
 
     server = db.query(DbServer).filter(DbServer.server_ip == server_ip )
-    if server.first().ssh_accounts_number > 0:
+
+    if server.first().ssh_accounts_number > 0 :
         server.update({DbServer.ssh_accounts_number: server.first().ssh_accounts_number - 1})
-        db.commit()
+        if commit:
+            db.commit()
 
     return server
 
@@ -84,11 +87,12 @@ def increase_v2ray_accounts_number(server_ip, db: Session):
 
     return server
 
-def change_status(server_ip, new_status: Status, db: Session):
+def change_status(server_ip, new_status: Status, db: Session, commit= True):
     
     server = db.query(DbServer).filter(DbServer.server_ip == server_ip )
-
     server.update({DbServer.status: new_status})
-    db.commit()
+    
+    if commit:
+        db.commit()
 
     return server
