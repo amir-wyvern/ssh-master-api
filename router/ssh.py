@@ -488,7 +488,7 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
 
     if request.new_interface_id :
-        interface = db_ssh_interface.get_interface_by_id(request.interface_id, db)
+        interface = db_ssh_interface.get_interface_by_id(request.new_interface_id, db)
 
         if interface == None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'Interface_id not exists', 'internal_code': 2410})
