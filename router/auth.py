@@ -6,6 +6,16 @@ from db import db_user
 from db.database import get_db
 from schemas import Token, UserRole, UserStatus
 from auth.auth import authenticate_user, create_access_token
+import logging
+
+# Create a file handler to save logs to a file
+file_handler = logging.FileHandler('auth_router.log') 
+file_handler.setLevel(logging.INFO) 
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
+file_handler.setFormatter(formatter) 
+
+logger = logging.getLogger('auth_router.log') 
+logger.addHandler(file_handler) 
 
 
 router = APIRouter(prefix='/auth', tags=['Auth'])
@@ -28,14 +38,16 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Unkown Scopes",
         )
-    
     try:
-        for _ in range(2):
+        try:
             user_unchecked = db_user.get_user_by_username(form_data.username, db) 
-            break
         
+        except Exception as e:
+            user_unchecked = db_user.get_user_by_username(form_data.username, db) 
+
     except Exception as e:
-        raise e
+        logger.error(f'[login] error in database (user:{form_data.username} -error: {e})')
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
     
     user = authenticate_user(user_unchecked, form_data.password, getattr(UserRole, role.upper()) )
 
