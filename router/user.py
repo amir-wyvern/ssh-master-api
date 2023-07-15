@@ -155,7 +155,7 @@ def add_new_user_via_service(request: NewUserViaService, service_type: ServiceTy
         }
         
         try:
-            service = db_ssh_service.create_ssh(SshService(**service_data), db, commit= False)
+            db_ssh_service.create_ssh(SshService(**service_data), db, commit= False)
             db_server.increase_ssh_accounts_number(interface.server_ip, db, commit= False)
             db.commit()
 
