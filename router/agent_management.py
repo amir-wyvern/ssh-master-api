@@ -62,16 +62,15 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
         'role': UserRole.AGENT
     }
 
-    user = db_user.create_user(UserRegisterForDataBase(**data), db, commit= False)
+    user = db_user.create_user(UserRegisterForDataBase(**data), db)
+
     _, err = create_user_if_not_exist(user.user_id)
     
     if err :
-        db.rollback()
+        db_user.delete_user(user.user_id, db)
+        logger.error(f'[creation agent] failed create the agent [agent: {current_user.user_id} -username: {request.username} -resp_code: {err.resp_code} -error: {err.detail}]')
         raise err
     
-    db.commit()
-    db.refresh(user)
-
     logger.info(f'[creation agent] successfully ({request.username})')
 
     return 'agent successfully registered'
