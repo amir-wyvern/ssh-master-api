@@ -27,13 +27,19 @@ from typing import List
 import logging
 
 # Create a file handler to save logs to a file
+logger = logging.getLogger('server_route.log') 
+
 file_handler = logging.FileHandler('server_route.log') 
 file_handler.setLevel(logging.INFO) 
 formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
 file_handler.setFormatter(formatter) 
-
-logger = logging.getLogger('server_route.log') 
 logger.addHandler(file_handler) 
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
 router = APIRouter(prefix='/server', tags=['Server'])
 

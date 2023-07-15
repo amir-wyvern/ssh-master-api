@@ -47,14 +47,19 @@ from financial_api.transfer import transfer
 import logging
 
 # Create a file handler to save logs to a file
+logger = logging.getLogger('ssh_route.log') 
+
 file_handler = logging.FileHandler('ssh_route.log') 
 file_handler.setLevel(logging.INFO) 
 formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
 file_handler.setFormatter(formatter) 
-
-logger = logging.getLogger('ssh_route.log') 
 logger.addHandler(file_handler) 
 
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
 ADMID_ID_FOR_FINANCIAl = 1 
 router = APIRouter(prefix='/agent/ssh', tags=['Ssh-Agent'])

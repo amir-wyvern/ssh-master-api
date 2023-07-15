@@ -25,13 +25,19 @@ from typing import List
 import logging
 
 # Create a file handler to save logs to a file
+logger = logging.getLogger('agent_management_route.log') 
+
 file_handler = logging.FileHandler('agent_management_route.log') 
 file_handler.setLevel(logging.INFO) 
 formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
 file_handler.setFormatter(formatter) 
-
-logger = logging.getLogger('agent_management_route.log') 
 logger.addHandler(file_handler) 
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
 router = APIRouter(prefix='/agent', tags=['Agent-Menagement'])
 
@@ -67,8 +73,8 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
     _, err = create_user_if_not_exist(user.user_id)
     
     if err :
-        db_user.delete_user(user.user_id, db)
         logger.error(f'[creation agent] failed create the agent [agent: {current_user.user_id} -username: {request.username} -resp_code: {err.resp_code} -error: {err.detail}]')
+        db_user.delete_user(user.user_id, db)
         raise err
     
     logger.info(f'[creation agent] successfully ({request.username})')
