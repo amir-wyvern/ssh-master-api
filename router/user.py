@@ -62,22 +62,24 @@ def generate_password():
     return hashed_password
 
 @router.get('/services', response_model= UserServices, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}, status.HTTP_409_CONFLICT:{'model':HTTPError}})
-def get_user_services_via_telegram(chat_id: str= None,username: str= None, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
+def get_user_services_via_telegram(username: str= None, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
-    if username is None and chat_id is None:
+    if username is None :
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'you shoud send at least username or chat_id', 'internal_code': 2432})
     
-    if chat_id:
-        services = db_ssh_service.get_services_by_chat_id(chat_id, db, status= ServiceStatus.ENABLE)
-        if services == [] :
-            raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'this chat_id have not any active service', 'internal_code': 2425})
+    # if chat_id:
+    #     services = db_ssh_service.get_services_by_chat_id(chat_id, db, status= ServiceStatus.ENABLE)
+    #     if services == [] :
+    #         raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'this chat_id have not any active service', 'internal_code': 2425})
     
-    else:
-        service = db_ssh_service.get_service_by_username(username, db)
-        if service is None :
-            raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any active service', 'internal_code': 2433})
+    service = db_ssh_service.get_service_by_username(username, db)
+    if service is None :
+        raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any active service', 'internal_code': 2433})
 
-        services = [service]
+    if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
+    
+    services = [service]
 
     ls_service = []
     for service in services:
