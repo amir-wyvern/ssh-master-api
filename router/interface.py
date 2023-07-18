@@ -86,10 +86,10 @@ def fetch_ssh_interface(mode: InterfaceMode= InterfaceMode.BEST, current_user: T
         for interface in interfaces:
 
             if find_server(interface.server_ip):
-                services = db_ssh_service.get_services_by_server_ip(interface.server_ip, db, status= ServiceStatus.ENABLE)
+                number_of_configs = db_server.get_server_by_ip(interface.server_ip, db).ssh_accounts_number
 
-                if len(services) < tmp_min :
-                    tmp_min = len(services)
+                if number_of_configs < tmp_min :
+                    tmp_min = number_of_configs
                     best_interface = interface
             
         return [best_interface]
