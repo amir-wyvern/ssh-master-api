@@ -118,14 +118,11 @@ while True:
                     continue
                     
                 try:
-                    db.begin()
-                    db_server.decrease_ssh_accounts_number(service.server_ip, db, commit= False) 
-                    db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db, commit= False)
-                    db.commit()
+                    db_server.decrease_ssh_accounts_number(service.server_ip, db) 
+                    db_ssh_service.change_status(service.service_id, ServiceStatus.DELETED, db)
 
                 except Exception as e:
                     logger.error(f'[delete] error in database (username: {service.username} -error: {e})')
-                    db.rollback()
                     continue                    
 
                 logger.info(f'[delete] successfully account deleted [server: {service.server_ip} -username: {service.username}]')
