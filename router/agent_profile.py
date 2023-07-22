@@ -27,6 +27,7 @@ import logging
 
 # Create a file handler to save logs to a file
 logger = logging.getLogger('agent_profile_route.log') 
+logger.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler('agent_profile_route.log') 
 file_handler.setLevel(logging.INFO) 

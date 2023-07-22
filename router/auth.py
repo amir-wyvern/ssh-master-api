@@ -10,6 +10,7 @@ import logging
 
 # Create a file handler to save logs to a file
 logger = logging.getLogger('auth_router.log') 
+logger.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler('auth_router.log') 
 file_handler.setLevel(logging.INFO) 

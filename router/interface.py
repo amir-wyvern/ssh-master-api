@@ -37,6 +37,7 @@ import logging
 
 # Create a file handler to save logs to a file
 logger = logging.getLogger('interface_route.log') 
+logger.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler('interface_route.log') 
 file_handler.setLevel(logging.INFO) 

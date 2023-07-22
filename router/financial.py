@@ -28,6 +28,7 @@ import logging
 
 # Create a file handler to save logs to a file
 logger = logging.getLogger('financial_route.log') 
+logger.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler('financial_route.log') 
 file_handler.setLevel(logging.INFO) 

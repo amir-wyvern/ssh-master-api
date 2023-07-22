@@ -48,6 +48,7 @@ import logging
 
 # Create a file handler to save logs to a file
 logger = logging.getLogger('ssh_route.log') 
+logger.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler('ssh_route.log') 
 file_handler.setLevel(logging.INFO) 
