@@ -34,6 +34,9 @@
 2435= There is no interface or server for renew config
 2436= There is no best interface for renew config
 2437= This service had deleted
+2438= Authentication Failed
+2439= Error in init server
+2440= There is no server exists
 
 # financial
 1003= There was a problem in registering the deposit request
