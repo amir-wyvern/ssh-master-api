@@ -160,7 +160,7 @@ def create_test_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(
         'username': username, 
         'password': password, 
         'host': interface.server_ip,
-        'port': interface.port,
+        'port': interface.port
     }
 
     logger.info(f'[new test ssh] the test ssh account was created successfully [agent: {current_user.user_id} -username: {username} -interface_id: {interface.interface_id}]')
@@ -307,15 +307,20 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
     if request_new_expire <= datetime.now().replace(tzinfo=pytz.utc):
         raise HTTPException(status_code= status.HTTP_422_UNPROCESSABLE_ENTITY, detail={'message': 'invalid parameter for new expire', 'internal_code': 2414}) 
     
+    interface = db_ssh_interface.get_interface_by_id(service.interface_id, db)
+
+    if interface.status == InterfaceStatus.DISABLE:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'Interface_id is disable', 'internal_code': 2426})
+
     rollbackTransfer = None
     price = None
 
     if current_user.role == UserRole.AGENT:
-
-        interface = db_ssh_interface.get_interface_by_id(service.interface_id, db)
+        
         unit_price = interface.price / (interface.duration * 24 * 60) 
         update_hours = abs(request_new_expire - service_expire)
-        price = (update_hours.total_seconds() / 60) * unit_price
+        # NOTE: 0.72 : for update expire a account we used 0.72 and for new account we used 1
+        price = (update_hours.total_seconds() / 60) * unit_price * 0.72
 
         if request_new_expire > service_expire:
             
