@@ -74,6 +74,11 @@ class FetchStatusServer(str, Enum):
     ALL = 'all'
     ONE = 'one'
 
+class UpdateNodesResponse(BaseModel):
+
+    message: str
+    errors : List[Dict[str,str]]
+
 
 class UpdateServerStatus(BaseModel):
 
