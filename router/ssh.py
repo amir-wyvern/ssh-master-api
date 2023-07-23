@@ -225,14 +225,14 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
 
     _, err = create_ssh_account(interface.server_ip, username, password)
     if err:
-        logger.info(f'[new ssh] ssh account creation failed [agent: {current_user.user_id} -interface_id: {interface.interface_id} -resp_code: {err.status_code} -error: {err.detail}]')
+        logger.info(f'[new ssh] ssh account creation failed (agent: {current_user.user_id} -interface_id: {interface.interface_id} -resp_code: {err.status_code} -error: {err.detail})')
         if current_user.role == UserRole.AGENT:
             _, err = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
             if err:
-                logger.info(f'[new ssh] the operation of transferring credit to the agent was not done [agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} -error: {err.detail}]')
+                logger.info(f'[new ssh] the operation of transferring credit to the agent was not done agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} -error: {err.detail})')
                 raise err
             
-            logger.info(f'[new ssh] the credit was returned to the agent [agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code}]')
+            logger.info(f'[new ssh] the credit was returned to the agent (agent: {current_user.user_id} -price: {interface.price})')
         raise err
 
     
@@ -277,7 +277,7 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
         'port': interface.port,
     }
 
-    logger.info(f'[new ssh] the ssh account was created successfully [agent: {current_user.user_id} -username: {username} -interface_id: {interface.interface_id}]')
+    logger.info(f'[new ssh] the ssh account was created successfully (agent: {current_user.user_id} -username: {username} -interface_id: {interface.interface_id})')
     
     return NewSshResponse(**response_message)
 
@@ -319,7 +319,7 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
     if current_user.role == UserRole.AGENT:
         
         unit_price = interface.price / (interface.duration * 24 * 60) 
-        update_hours = abs(request_new_expire - service_expire)
+        update_hours = abs(request_new_expire - service_expire) 
         # NOTE: 0.72 : for update expire a account we used 0.72 and for new account we used 1
         price = (update_hours.total_seconds() / 60) * unit_price * 0.72
 
