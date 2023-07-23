@@ -58,7 +58,7 @@
 3502= Failed to set password for user {username} : {message} 
 3503= Failed to delete user {username}: {message}'
 3511= create user [{username}] exception [{Exception}]
-
+3512= Error in executing command
 
 user_576917 3e24523c
 user_154371 a5ffedac
