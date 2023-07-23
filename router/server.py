@@ -72,7 +72,7 @@ def add_new_server(request: NewServer, deploy_slave: ServerStatus = ServerStatus
             'apt-get -y install sudo',
             'apt-get -y install git',
             'apt-get -y install tmux',
-            'git clone https://github.com/amir-wyvern/ssh-slave-api.git',
+            'git clone https://github.com/amir-wyvern/ssh-slave-api.git /root/ssh-slave-api',
             'python -m venv /root/ssh-slave-api/venv',
             f'echo "TOKEN=\'{slave_token}\'" > /root/ssh-slave-api/.env',
             'tmux new-session -d -s slave',
@@ -150,6 +150,7 @@ def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=D
         "sudo tmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter",
     ]
 
+    ls_error = {}
     for server in servers:
         
         interfaces = db_ssh_interface.get_interface_by_server_ip(server.server_ip, db, status= InterfaceStatus.ENABLE)
@@ -162,7 +163,6 @@ def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=D
         
         db.commit()
 
-        ls_error = {}
         try:
             ssh_client = paramiko.SSHClient()
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -186,6 +186,7 @@ def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=D
                     error_command = stderr.read().decode('utf-8')
                     ls_error[server.server_ip] = error_command
                     logging.error(f'-[update nodes] Error executing the command (server_ip: {server.server_ip} -command: {command} -error: {error_command})')
+                    continue
 
             ssh_client.close()
 
@@ -213,7 +214,7 @@ def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=D
     if ls_error:
         message = 'Failed to updating Some nodes'
         errors =[{'server': server, 'detail': error} for server, error in ls_error.items() ] 
-        logger.info(f'[update nodes] Failed to updating Some nodes')
+        logger.info(f'[update nodes] Failed to updating Some nodes (servers: {list(ls_error.keys())})')
 
     else:
         message = 'successfully update all nodes'
