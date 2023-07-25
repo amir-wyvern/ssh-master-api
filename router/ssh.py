@@ -544,7 +544,7 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
 
     _, err = create_ssh_account(best_interface.server_ip, request.username, service.password)
     if err:
-        logger.info(f'[renew] ssh account creation failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
+        logger.error(f'[renew] ssh account creation failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
     
     logger.info(f'[renew] ssh account successfully created (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id})')
@@ -552,15 +552,15 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     if service.status == ServiceStatus.DISABLE:
         _, err = block_ssh_account(best_interface.server_ip, request.username)
         if err:
-            logger.info(f'[renew] ssh block account failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
+            logger.error(f'[renew] ssh block account failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
             raise err
 
         logger.info(f'[renew] successfully blocked ssh account (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id})')
     
     _, err = delete_ssh_account(service.server_ip, request.username)
     if err:
-        logger.info(f'[renew] delete ssh account failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {service.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
-        raise err
+        logger.error(f'[renew] delete ssh account failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {service.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
+        # raise err
     
     logger.info(f'[renew] ssh account successfully created (agent: {current_user.user_id} -username: {request.username} -interface_id: {service.interface_id})')
     
