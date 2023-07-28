@@ -431,8 +431,8 @@ def unblock_ssh_account_via_agent(request: UnBlockSsh, current_user: TokenUser= 
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': f'Server [{service.server_ip}] is disable', 'internal_code':2421})
 
-    if server.ssh_accounts_number >= server.max_users:
-        raise HTTPException(status_code= status.HTTP_406_NOT_ACCEPTABLE, detail={'message': f'The Server [{service.server_ip}] has reached to max users', 'internal_code': 2411})
+    # if server.ssh_accounts_number >= server.max_users:
+    #     raise HTTPException(status_code= status.HTTP_406_NOT_ACCEPTABLE, detail={'message': f'The Server [{service.server_ip}] has reached to max users', 'internal_code': 2411})
 
     _, err = unblock_ssh_account(service.server_ip, request.username)
     if err:
