@@ -86,7 +86,7 @@ while True:
 
                 _ , err = block_ssh_account(service.server_ip, service.username)
                 if err:
-                    logger.error(f'[expire] failed account blocking [server: {service.server_ip} -username: {service.username} -resp_code: {err.status_code} -detail: {resp.detail}]')
+                    logger.error(f'[expire] failed account blocking [server: {service.server_ip} -username: {service.username} -resp_code: {err.status_code} -detail: {err.detail}]')
                     continue
             
                 db_ssh_service.change_status(service.service_id, ServiceStatus.DISABLE, db)
