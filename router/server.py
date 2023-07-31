@@ -64,7 +64,7 @@ def add_new_server(request: NewServer, deploy_slave: ServerStatus = ServerStatus
 
         commands = [
             'apt-get -y update && apt-get -y upgrade',
-            'apt-get -y install python',
+            'apt-get -y install python3',
             'apt-get -y install python-is-python3',
             'apt-get -y install python3-pip',
             'apt-get -y install python3-venv',
