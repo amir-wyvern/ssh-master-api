@@ -204,6 +204,8 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
 
     # NOTE: calcute financial
 
+
+
     if current_user.role == UserRole.AGENT:
         resp, err = get_balance(current_user.user_id)
         if err:
@@ -216,26 +218,31 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
             logger.error(f'[new ssh] Insufficient balance (agent_id: {current_user.user_id} -balance: {balance} -interface_price: {interface.price})')
             raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail= {'message': 'Insufficient balance', 'internal_code': 1412} )
 
+        _, err = create_ssh_account(interface.server_ip, username, password)
+        if err:
+            logger.info(f'[new ssh] ssh account creation failed (agent: {current_user.user_id} -interface_id: {interface.interface_id} -resp_code: {err.status_code} -error: {err.detail})')
+            raise err
+    
         _, err = transfer(current_user.user_id, ADMID_ID_FOR_FINANCIAl, interface.price)
         if err:
-            logger.error(f'[new ssh] transfer credit Faied (agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code}, error: {err.detail})')
+            _, err_delete = delete_ssh_account(interface.server_ip, username)
+            if err_delete:
+                logger.error(f'[new ssh] (transfer failed) deleted ssh account failed (agent: {current_user.user_id} -username: {username} -resp_code: {err_delete.status_code} -error: {err_delete.detail})')
+            
+            else:
+                logger.error(f'[new ssh] deleted ssh account successfully (agent: {current_user.user_id} -username: {username})')
+            
             raise err
         
         logger.info(f'[new ssh] successfully transfered credit (agent: {current_user.user_id} -price: {interface.price})')
-
-    _, err = create_ssh_account(interface.server_ip, username, password)
-    if err:
-        logger.info(f'[new ssh] ssh account creation failed (agent: {current_user.user_id} -interface_id: {interface.interface_id} -resp_code: {err.status_code} -error: {err.detail})')
-        if current_user.role == UserRole.AGENT:
-            _, err = transfer(ADMID_ID_FOR_FINANCIAl, current_user.user_id, interface.price)
-            if err:
-                logger.info(f'[new ssh] the operation of transferring credit to the agent was not done agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} -error: {err.detail})')
-                raise err
-            
-            logger.info(f'[new ssh] the credit was returned to the agent (agent: {current_user.user_id} -price: {interface.price})')
-        raise err
-
     
+    else:
+        
+        _, err = create_ssh_account(interface.server_ip, username, password)
+        if err:
+            logger.info(f'[new ssh] ssh account creation failed (agent: {current_user.user_id} -interface_id: {interface.interface_id} -resp_code: {err.status_code} -error: {err.detail})')
+            raise err
+        
     service_data = {
         'server_ip': interface.server_ip,
         'password': password,
@@ -313,7 +320,6 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
     if interface.status == InterfaceStatus.DISABLE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'Interface_id is disable', 'internal_code': 2426})
 
-    rollbackTransfer = None
     price = None
 
     if current_user.role == UserRole.AGENT:
@@ -336,42 +342,49 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
                 logger.error(f'[expire] Insufficient balance (agent_id: {current_user.user_id} -balance: {balance} -interface_price: {interface.price})')
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail= {'message': 'Insufficient balance', 'internal_code': 1412} )
             
+            if request.unblock == True:
+                _, err = unblock_ssh_account(service.server_ip, request.username)
+                if err:
+                    logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -error: {err.detail})')
+                    raise err
+
             _, err = transfer(service.agent_id, ADMID_ID_FOR_FINANCIAl, price)
             if err:
                 logger.error(f'[expire] transfer credit Faied (agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} error: {err.detail})')
+                _, err_block = block_ssh_account(service.server_ip, request.username)
+                if err_block:
+                    logger.error(f'[expire] (failed transferd) block ssh account failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err_block.status_code} error: {err_block.detail})')
+
                 raise err
 
-            rollbackTransfer = {'func':transfer ,'args':[ADMID_ID_FOR_FINANCIAl, service.agent_id, price]}
             logger.info(f'[expire] successfully transfered credit (agent: {current_user.user_id} -price: {price})')
 
         else:
 
+            if request.unblock == True:
+                _, err = unblock_ssh_account(service.server_ip, request.username)
+                if err:
+                    logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -error: {err.detail})')
+                    raise err
+
             _, err = transfer(ADMID_ID_FOR_FINANCIAl, service.agent_id, price)
             if err:
                 logger.error(f'[expire] transfer credit Faied (agent: {current_user.user_id} -price: {price} -resp_code: {err.status_code} error: {err.detail})')
-                raise err
-            
-            rollbackTransfer = {'func':transfer ,'args':[service.agent_id, ADMID_ID_FOR_FINANCIAl, price]}
+                _, err_block = block_ssh_account(service.server_ip, request.username)
+                if err_block:
+                    logger.error(f'[expire] (failed transferd) block ssh account failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err_block.status_code} error: {err_block.detail})')
 
-    # =================== Begin ===================
-    db_ssh_service.update_expire(service.service_id, request_new_expire, db, commit= False)
-        
-    if request.unblock == True:
+                raise err
+
+    else: 
         _, err = unblock_ssh_account(service.server_ip, request.username)
         if err:
             logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -error: {err.detail})')
-            db.rollback() 
-            if rollbackTransfer:
-                _, err = rollbackTransfer['func'](*rollbackTransfer['args'])
-                if err:
-                    logger.error(f'[expire] transfer credit Faied  (agent: {current_user.user_id} -price: {price} -resp_code: {err.status_code} -error: {err.detail})')
-                    raise err 
-                
-                logger.error(f'[expire] successfully returned credit (agent: {current_user.user_id} -price: {price})')
-            
             raise err
-        
-        db_ssh_service.change_status(service.service_id, ServiceStatus.ENABLE, db, commit=False)
+
+    # =================== Begin ===================
+    db_ssh_service.update_expire(service.service_id, request_new_expire, db, commit= False)
+    db_ssh_service.change_status(service.service_id, ServiceStatus.ENABLE, db, commit=False)
 
     db.commit()
     # =================== Commit ===================
