@@ -67,7 +67,7 @@ def update_agent_balance(request: SetNewBalance, current_user: TokenUser= Depend
         logger.error(f'[update agent balance] error in set balance (username:{agent.username}, error: {err.detail})')
         raise err
     
-    logger.info(f'[update agent balance] successfully (username: {request.username})')
+    logger.info(f'[update agent balance] successfully (username: {request.username} -new_balance: {request.new_balance})')
     return 'request balance update was successfully'
 
 
