@@ -298,7 +298,8 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
     status.HTTP_409_CONFLICT:{'model':HTTPError}} )
 def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
-    service = db_ssh_service.get_service_by_username(request.username, db)
+    username = request.username.lower()    
+    service = db_ssh_service.get_service_by_username(username, db)
 
     if service == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'This Username have not any service', 'internal_code': 2433})
@@ -343,17 +344,17 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail= {'message': 'Insufficient balance', 'internal_code': 1412} )
             
             if request.unblock == True:
-                _, err = unblock_ssh_account(service.server_ip, request.username)
+                _, err = unblock_ssh_account(service.server_ip, username)
                 if err:
-                    logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -error: {err.detail})')
+                    logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {username} -resp_code: {err.status_code} -error: {err.detail})')
                     raise err
 
             _, err = transfer(service.agent_id, ADMID_ID_FOR_FINANCIAl, price)
             if err:
                 logger.error(f'[expire] transfer credit Faied (agent: {current_user.user_id} -price: {interface.price} -resp_code: {err.status_code} error: {err.detail})')
-                _, err_block = block_ssh_account(service.server_ip, request.username)
+                _, err_block = block_ssh_account(service.server_ip, username)
                 if err_block:
-                    logger.error(f'[expire] (failed transferd) block ssh account failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err_block.status_code} error: {err_block.detail})')
+                    logger.error(f'[expire] (failed transferd) block ssh account failed (agent: {current_user.user_id} -username: {username} -resp_code: {err_block.status_code} error: {err_block.detail})')
 
                 raise err
 
@@ -362,24 +363,24 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
         else:
 
             if request.unblock == True:
-                _, err = unblock_ssh_account(service.server_ip, request.username)
+                _, err = unblock_ssh_account(service.server_ip, username)
                 if err:
-                    logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -error: {err.detail})')
+                    logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {username} -resp_code: {err.status_code} -error: {err.detail})')
                     raise err
 
             _, err = transfer(ADMID_ID_FOR_FINANCIAl, service.agent_id, price)
             if err:
                 logger.error(f'[expire] transfer credit Faied (agent: {current_user.user_id} -price: {price} -resp_code: {err.status_code} error: {err.detail})')
-                _, err_block = block_ssh_account(service.server_ip, request.username)
+                _, err_block = block_ssh_account(service.server_ip, username)
                 if err_block:
-                    logger.error(f'[expire] (failed transferd) block ssh account failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err_block.status_code} error: {err_block.detail})')
+                    logger.error(f'[expire] (failed transferd) block ssh account failed (agent: {current_user.user_id} -username: {username} -resp_code: {err_block.status_code} error: {err_block.detail})')
 
                 raise err
 
     else: 
-        _, err = unblock_ssh_account(service.server_ip, request.username)
+        _, err = unblock_ssh_account(service.server_ip, username)
         if err:
-            logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -error: {err.detail})')
+            logger.error(f'[expire] unblock user failed (agent: {current_user.user_id} -username: {username} -resp_code: {err.status_code} -error: {err.detail})')
             raise err
 
     # =================== Begin ===================
@@ -388,7 +389,7 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
 
     db.commit()
     # =================== Commit ===================
-    logger.info(f'[expire] successfully update expire (agent: {current_user.user_id} -username:{request.username} -new_expire: {request.new_expire})')
+    logger.info(f'[expire] successfully update expire (agent: {current_user.user_id} -username:{username} -new_expire: {request.new_expire})')
     
     return UpdateSshExpireResponse(**{'username': service.username, 'expire': request_new_expire})
 
@@ -396,8 +397,8 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
 @router.post('/block', response_model= str, responses={status.HTTP_409_CONFLICT:{'model': HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model': HTTPError}})
 def block_ssh_account_via_agent(request: BlockSsh, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
-    
-    service = db_ssh_service.get_service_by_username(request.username, db)
+    username = request.username.lower()    
+    service = db_ssh_service.get_service_by_username(username, db)
 
     if service is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any service', 'internal_code':2433})
@@ -411,21 +412,22 @@ def block_ssh_account_via_agent(request: BlockSsh, current_user: TokenUser= Depe
     if service.status == ServiceStatus.DISABLE:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'The user has already been block', 'internal_code': 2415})
 
-    _ ,err = block_ssh_account(service.server_ip, request.username)
+    _ ,err = block_ssh_account(service.server_ip, username)
     if err:
-        logger.error(f'[block] error (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -detail: {err.detail})')
+        logger.error(f'[block] error (agent: {current_user.user_id} -username: {username} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
     
     db_ssh_service.change_status(service.service_id, ServiceStatus.DISABLE, db)
-    logger.info(f'[block] successfully blocked (agent: {current_user.user_id} -username: {request.username})')
+    logger.info(f'[block] successfully blocked (agent: {current_user.user_id} -username: {username})')
 
-    return f'Successfully blocked user [{request.username}]'
+    return f'Successfully blocked user [{username}]'
 
 
 @router.post('/unblock', response_model= str, responses={status.HTTP_408_REQUEST_TIMEOUT:{'model': HTTPError}, status.HTTP_409_CONFLICT:{'model': HTTPError}})
 def unblock_ssh_account_via_agent(request: UnBlockSsh, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
-    service = db_ssh_service.get_service_by_username(request.username, db)
+    username = request.username.lower()
+    service = db_ssh_service.get_service_by_username(username, db)
 
     if service is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any service', 'internal_code':2433})
@@ -447,15 +449,15 @@ def unblock_ssh_account_via_agent(request: UnBlockSsh, current_user: TokenUser= 
     # if server.ssh_accounts_number >= server.max_users:
     #     raise HTTPException(status_code= status.HTTP_406_NOT_ACCEPTABLE, detail={'message': f'The Server [{service.server_ip}] has reached to max users', 'internal_code': 2411})
 
-    _, err = unblock_ssh_account(service.server_ip, request.username)
+    _, err = unblock_ssh_account(service.server_ip, username)
     if err:
-        logger.error(f'[unblock] error (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -detail: {err.detail})')
+        logger.error(f'[unblock] error (agent: {current_user.user_id} -username: {username} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
     
     db_ssh_service.change_status(service.service_id, ServiceStatus.ENABLE, db)
-    logger.info(f'[unblock] successfully unblocked (agent: {current_user.user_id} -username: {request.username})')
+    logger.info(f'[unblock] successfully unblocked (agent: {current_user.user_id} -username: {username})')
 
-    return f'Successfully unblocked user [{request.username}]'
+    return f'Successfully unblocked user [{username}]'
 
 
 @router.delete('/delete', response_model= str, responses={
@@ -464,7 +466,8 @@ def unblock_ssh_account_via_agent(request: UnBlockSsh, current_user: TokenUser= 
     status.HTTP_408_REQUEST_TIMEOUT:{'model': HTTPError}})
 def delete_ssh_account_via_agent(request: DeleteSsh, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
-    service = db_ssh_service.get_service_by_username(request.username, db)
+    username = request.username.lower()
+    service = db_ssh_service.get_service_by_username(username, db)
     
     if service is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any service', 'internal_code':2433})
@@ -475,9 +478,9 @@ def delete_ssh_account_via_agent(request: DeleteSsh, current_user: TokenUser= De
     if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
     
-    _ ,err = delete_ssh_account(service.server_ip, request.username)
+    _ ,err = delete_ssh_account(service.server_ip, username)
     if err:
-        logger.error(f'[delete] error (agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -detail: {err.detail})')
+        logger.error(f'[delete] error (agent: {current_user.user_id} -username: {username} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
     
     try:
@@ -486,12 +489,12 @@ def delete_ssh_account_via_agent(request: DeleteSsh, current_user: TokenUser= De
         db.commit()
 
     except Exception as e:
-        logger.error(f'[delete] error in database (agent: {current_user.user_id} -username: {request.username} -error: {e})')
+        logger.error(f'[delete] error in database (agent: {current_user.user_id} -username: {username} -error: {e})')
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
 
-    logger.info(f'[delete] successfully deleted (agent: {current_user.user_id} -username: {request.username})')
-    return f'Successfully delete user [{request.username}]'
+    logger.info(f'[delete] successfully deleted (agent: {current_user.user_id} -username: {username})')
+    return f'Successfully delete user [{username}]'
 
 
 @router.post('/renew', response_model= NewSshResponse, responses={
@@ -500,7 +503,8 @@ def delete_ssh_account_via_agent(request: DeleteSsh, current_user: TokenUser= De
     status.HTTP_408_REQUEST_TIMEOUT:{'model': HTTPError}})
 def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
-    service = db_ssh_service.get_service_by_username(request.username, db)
+    username = request.username.lower()
+    service = db_ssh_service.get_service_by_username(username, db)
     
     if service is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any service', 'internal_code':2433})
@@ -555,27 +559,27 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     if best_interface is None:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'There is no best interface for renew config', 'internal_code': 2436})
 
-    _, err = create_ssh_account(best_interface.server_ip, request.username, service.password)
+    _, err = create_ssh_account(best_interface.server_ip, username, service.password)
     if err:
-        logger.error(f'[renew] ssh account creation failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
+        logger.error(f'[renew] ssh account creation failed (agent: {current_user.user_id} -username: {username} -interface_id: {best_interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
         raise err
     
-    logger.info(f'[renew] ssh account successfully created (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id})')
+    logger.info(f'[renew] ssh account successfully created (agent: {current_user.user_id} -username: {username} -interface_id: {best_interface.interface_id})')
     
     if service.status == ServiceStatus.DISABLE:
-        _, err = block_ssh_account(best_interface.server_ip, request.username)
+        _, err = block_ssh_account(best_interface.server_ip, username)
         if err:
-            logger.error(f'[renew] ssh block account failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
+            logger.error(f'[renew] ssh block account failed (agent: {current_user.user_id} -username: {username} -interface_id: {best_interface.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
             raise err
 
-        logger.info(f'[renew] successfully blocked ssh account (agent: {current_user.user_id} -username: {request.username} -interface_id: {best_interface.interface_id})')
+        logger.info(f'[renew] successfully blocked ssh account (agent: {current_user.user_id} -username: {username} -interface_id: {best_interface.interface_id})')
     
-    _, err = delete_ssh_account(service.server_ip, request.username)
+    _, err = delete_ssh_account(service.server_ip, username)
     if err:
-        logger.error(f'[renew] delete ssh account failed (agent: {current_user.user_id} -username: {request.username} -interface_id: {service.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
+        logger.error(f'[renew] delete ssh account failed (agent: {current_user.user_id} -username: {username} -interface_id: {service.interface_id} -resp_code: {err.status_code} -detail: {err.detail})')
         # raise err
     
-    logger.info(f'[renew] ssh account successfully created (agent: {current_user.user_id} -username: {request.username} -interface_id: {service.interface_id})')
+    logger.info(f'[renew] ssh account successfully created (agent: {current_user.user_id} -username: {username} -interface_id: {service.interface_id})')
     
     try:
         db_server.decrease_ssh_accounts_number(service.server_ip, db, commit= False) 
@@ -584,16 +588,16 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
         db.commit()
 
     except Exception as e: 
-        logger.error(f'[renew] error in database (agent: {current_user.user_id} -username: {request.username} -error: {e})')
+        logger.error(f'[renew] error in database (agent: {current_user.user_id} -username: {username} -error: {e})')
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
     
     response_message = {
-        'username': request.username, 
+        'username': username, 
         'password': service.password, 
         'host': best_interface.server_ip,
         'port': best_interface.port,
     }
     
-    logger.info(f'[renew] renew config successfully created (agent: {current_user.user_id} -username: {request.username} -old_interface: {service.interface_id} -new_interface: {request.new_interface_id})')
+    logger.info(f'[renew] renew config successfully created (agent: {current_user.user_id} -username: {username} -old_interface: {service.interface_id} -new_interface: {request.new_interface_id})')
     return NewSshResponse(**response_message)
