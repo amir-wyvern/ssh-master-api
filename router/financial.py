@@ -19,7 +19,7 @@ from db.database import get_db
 from auth.auth import get_agent_user, get_admin_user
 
 from financial_api.deopsit import deposit_request, deposit_confirmation
-from financial_api.user import set_balance
+from financial_api.user import set_balance, get_balance
 
 import random
 import string
@@ -54,7 +54,7 @@ def generate_password():
     return hashed_password
 
 
-@router.post('/balance', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}}, tags=['Agent-Menagement'])
+@router.put('/balance', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}}, tags=['Agent-Menagement'])
 def update_agent_balance(request: SetNewBalance, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     agent = db_user.get_user_by_username(request.username, db)
@@ -62,12 +62,22 @@ def update_agent_balance(request: SetNewBalance, current_user: TokenUser= Depend
     if agent is None:
         raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail= {'message': 'username could not be found', 'internal_code': 2407} )
 
-    _, err = set_balance(agent.user_id, request.new_balance)
+    resp_balance, err = get_balance(agent.user_id)
+    if err:
+        logger.error(f'[update agent balance] get balance (username: {agent.username} -error: {err.detail})')
+        raise err
+    
+    new_balance = request.value + resp_balance['balance']
+
+    if new_balance < 0 :
+        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail= {'message': 'balance could not be less than zero', 'internal_code': 2466} )
+
+    _, err = set_balance(agent.user_id, new_balance)
     if err:
         logger.error(f'[update agent balance] error in set balance (username:{agent.username}, error: {err.detail})')
         raise err
     
-    logger.info(f'[update agent balance] successfully (username: {request.username} -new_balance: {request.new_balance})')
+    logger.info(f'[update agent balance] successfully (username: {request.username} -new_balance: {new_balance})')
     return 'request balance update was successfully'
 
 

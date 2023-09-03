@@ -3,14 +3,17 @@ from router import (
     agent_management,
     agent_profile,
     financial,
-    interface,
+    service,
+    domain,
     server,
+    plan,
     ssh,
-    auth,
-    user
+    auth
 )
-from schemas import UserRegisterForDataBase, UserRole, Status
-from db import models, db_user
+from schemas import UserRegisterForDataBase, UserRole, Status, CreateSubsetProfit
+from cache.cache_session import get_last_domain, set_last_domain
+from cache.database import get_redis_cache
+from db import models, db_user, db_subset, db_domain
 from db.database import engine, get_db
 from dotenv import load_dotenv
 import os 
@@ -30,14 +33,14 @@ app = FastAPI(
 app.include_router(ssh.router)
 app.include_router(agent_profile.router)
 app.include_router(agent_management.router)
-app.include_router(interface.router)
+app.include_router(plan.router)
+app.include_router(domain.router)
 app.include_router(server.router)
 app.include_router(financial.router)
-app.include_router(user.router)
+app.include_router(service.router)
 app.include_router(auth.router)
 
 models.Base.metadata.create_all(engine)
-
 
 db = get_db().__next__()
 
@@ -53,9 +56,30 @@ if ch_user is None:
         'bot_token': os.getenv('ADMIN_BOT_TOKEN'),
         'username': os.getenv('ADMIN_USERNAME'),
         'password': os.getenv('ADMIN_PASSWORD'),
+        'referal_link': 'admin',
+        'parent_agent_id': 1,
+        'subset_limit': 999999,
         'status': Status.ENABLE,
         'role': UserRole.ADMIN
     }
 
-    db_user.create_user(UserRegisterForDataBase(**user_data), db)
+    admin = db_user.create_user(UserRegisterForDataBase(**user_data), db)
+    db_subset.create_subset(CreateSubsetProfit(
+        user_id= admin.user_id,
+        not_released_profit= 0,
+        total_profit= 0,
+        number_of_configs= 0), db)
+
+
+if get_last_domain(get_redis_cache().__next__()) is None:
+
+    last_domain_obj = db_domain.get_last_domain(db)
+    if last_domain_obj is None:
+        last_domain = 'm1.abc-cluster.online'
     
+    else:
+        last_domain = last_domain_obj.domain_name
+
+    set_last_domain(last_domain, get_redis_cache().__next__())
+
+

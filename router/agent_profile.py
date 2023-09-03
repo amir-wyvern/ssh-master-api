@@ -8,21 +8,20 @@ from fastapi import (
 from sqlalchemy.orm.session import Session
 from schemas import (
     HTTPError,
-    Status,
     AgentInfoResponse,
-    UsersInfoAgentResponse,
     UpdateAgentPassword,
     UpdateAgentBotToken,
     TokenUser,
     UserRole,
-    ServiceStatus
+    ServiceStatusDb,
+    ClaimPartnerShipProfit,
+    PaymentMeothodPartnerShip
 )
 from typing import List
-from db import db_user, db_ssh_service
+from db import db_user, db_ssh_service, db_subset
 from db.database import get_db
 from auth.auth import  get_agent_user
-from datetime import datetime, timedelta
-from financial_api.user import get_balance
+from financial_api.user import get_balance, set_balance
 import logging
 
 # Create a file handler to save logs to a file
@@ -41,43 +40,8 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+
 router = APIRouter(prefix='/agent', tags=['Agent-Profile'])
-
-@router.get('/users', response_model= List[UsersInfoAgentResponse], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}}, tags=['Agent-Menagement'])
-def get_all_agent_users(username: str= Query(None,description='This filed (username) is For Admin'), number_day_to_expire: int= Query(default=0, gt=0) ,user_status: Status= Status.ALL, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
-    
-    if current_user.role == UserRole.ADMIN and username is not None:
-        agent = db_user.get_user_by_username(username, db)
-        user_id = agent.user_id
-
-        if agent is None:
-            raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'username could not be found', 'internal_code': 2407})
-        
-    else:
-        user_id = current_user.user_id
-
-
-    if number_day_to_expire is None :
-        args = {'agent_id': user_id, 'db': db}
-        ssh_service = db_ssh_service.get_services_by_agent_id
-    
-    else:
-        start_time = datetime.now() 
-        end_time = datetime.now() + timedelta(days= number_day_to_expire)
-        
-        args = {'agent_id': user_id, 'start_time': start_time, 'end_time': end_time, 'db': db}
-        ssh_service = db_ssh_service.get_services_by_agent_and_range_time
-    
-    
-    if user_status == Status.ALL:
-        services = ssh_service(**args)
-
-    else : 
-        args['status'] = user_status
-        services = ssh_service(**args)
-    
-    return services
-
 
 @router.get('/info', response_model= AgentInfoResponse, responses={
     status.HTTP_404_NOT_FOUND:{'model':HTTPError},
@@ -100,7 +64,7 @@ def get_agent_information(username: str= Query(None,description='This filed (age
 
     resp, err = get_balance(user_id)
     if err:
-        logger.error(f'[agent info] get balance (error: {err.detail})')
+        logger.error(f'[agent info] get balance (user_id: {user_id} -error: {err.detail})')
         raise err
 
     services = db_ssh_service.get_services_by_agent_id(user_id, db) 
@@ -114,16 +78,21 @@ def get_agent_information(username: str= Query(None,description='This filed (age
         all_services = len(services) 
 
         for service in services:
-            if service.status == ServiceStatus.ENABLE:
+            if service.status == ServiceStatusDb.ENABLE:
                 enable_services += 1
 
-            elif service.status == ServiceStatus.DISABLE:
+            elif service.status == ServiceStatusDb.DISABLE:
                 disable_services += 1
 
-            elif service.status == ServiceStatus.DELETED:
+            elif service.status == ServiceStatusDb.DELETED:
                 deleted_services += 1
 
     user = db_user.get_user_by_user_id(user_id, db) 
+    user_subset = db_subset.get_subset_by_user(user.user_id, db)
+
+    subset_list = []
+    for subset in db_user.get_users_by_parent_agent_id(user.parent_agent_id, db):
+        subset_list.append(subset.username)
 
     data = {
         'agent_id': user.user_id,
@@ -134,21 +103,26 @@ def get_agent_information(username: str= Query(None,description='This filed (age
         'email': user.email,
         'bot_token': user.bot_token,
         'username': user.username,
+        'subset_not_released_profit': user_subset.not_released_profit,
+        'subset_total_profit': user_subset.total_profit,
+        'subset_number_of_configs': user_subset.number_of_configs,
+        'subset_number_limit': user.subset_limit,
+        'subset_list': subset_list,
         'total_user': all_services,
         'enable_ssh_services': enable_services,
         'disable_ssh_services': disable_services,
         'deleted_ssh_services': deleted_services,
+        'referal_link': user.referal_link,
+        'parent_agent_id': user.parent_agent_id,
         'role': user.role,
         'status': user.status
     }
 
     return AgentInfoResponse(**data)
 
-@router.post('/password', response_model= str, responses={status.HTTP_401_UNAUTHORIZED:{'model':HTTPError}})
-def update_agent_password(request: UpdateAgentPassword, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
-    if current_user.role == UserRole.ADMIN :
-        raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
+@router.put('/password', response_model= str, responses={status.HTTP_401_UNAUTHORIZED:{'model':HTTPError}})
+def update_agent_password(request: UpdateAgentPassword, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
     db_user.update_password(current_user.user_id, request.password, db) 
     logger.info(f'[change agent password] successfully (user_id: {current_user.user_id})')
@@ -156,11 +130,50 @@ def update_agent_password(request: UpdateAgentPassword, current_user: TokenUser=
     return 'the agent password successfully has changed'
 
 
-@router.post('/bot_token', response_model= str, responses={status.HTTP_401_UNAUTHORIZED:{'model':HTTPError}})
-def update_agent_bot_token(request: UpdateAgentBotToken, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
+@router.post('/subset/profit', response_model= str, responses={status.HTTP_401_UNAUTHORIZED:{'model':HTTPError}})
+def clain_partnership_profit(request: ClaimPartnerShipProfit, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
     if current_user.role == UserRole.ADMIN :
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
+
+    user_subset = db_subset.get_subset_by_user(current_user.user_id ,db)
+    
+    if user_subset == None or user_subset.not_released_profit == 0:
+        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': "you'r not have subset configs yet", 'internal_code': 2464})
+    
+    if request.amount > user_subset.not_released_profit:
+        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': "you'r not have enough subset configs", 'internal_code': 2465})
+
+    agent = db_user.get_user_by_user_id(current_user.user_id, db)
+
+    if request.method == PaymentMeothodPartnerShip.WALLET:
+        
+        resp_balance, err = get_balance(current_user.user_id)
+        if err:
+            logger.error(f'[subset profit] get balance (username: {agent.username} -error: {err.detail})')
+            raise err
+        
+        new_balance = request.amount + resp_balance['balance']
+        _, err = set_balance(current_user.user_id, new_balance)
+        if err:
+            logger.error(f'[subset profit] error in set balance (username: {agent.username}, error: {err.detail})')
+            raise err
+        
+        db_subset.decrease_not_released_profit_by_user(current_user.user_id, request.amount, db)
+
+        logger.info(f'[subset profit] successfully transfer profit to wallet (username: {agent.username} -used_amount: {request.amount} -new_balance: {new_balance})')
+
+
+    elif  request.method == PaymentMeothodPartnerShip.WITHDRAW:
+        return 'This part is not yet complete'
+
+
+
+    return 'successfully Done'
+
+
+@router.put('/bot_token', response_model= str, responses={status.HTTP_401_UNAUTHORIZED:{'model':HTTPError}})
+def update_agent_bot_token(request: UpdateAgentBotToken, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
     db_user.update_bot_token(current_user.user_id, request.bot_token, db)
     logger.info(f'[change agent bot token] successfully (user_id: {current_user.user_id})')

@@ -20,6 +20,7 @@ class PhoneNumberStr(str):
             raise ValueError("Not a valid phone number")
         return v
 
+
 class HTTPError(BaseModel):
 
     message: str 
@@ -30,59 +31,95 @@ class HTTPError(BaseModel):
             "example": {"detail": "HTTPException raised.", 'internal_code':1001},
         }
 
-class UserRole(str ,Enum):
-
-    AGENT = 'agent'
-    ADMIN = 'admin'
 
 class Status(str, Enum):
 
     DISABLE= 'disable'
     ENABLE= 'enable'
     DELETED= 'deleted'
-    ALL= 'all'
+    NONE= 'none'
 
-class ServerStatus(str, Enum):
 
-    DISABLE= 'disable'
-    ENABLE= 'enable'
-
-class InterfaceStatus(str, Enum):
-
-    DISABLE= 'disable'
-    ENABLE= 'enable'
-
-class UserAgentStatus(str, Enum):
-
-    DISABLE= 'disable'
-    ENABLE= 'enable'
-    ALL= 'all'
-
-class UserStatus(str, Enum):
-
-    DISABLE= 'disable'
-    ENABLE= 'enable'
-
-class ServiceStatus(str, Enum):
+class ServiceStatusDb(str, Enum):
 
     DISABLE= 'disable'
     ENABLE= 'enable'
     DELETED= 'deleted'
+
+class ConfigType(str, Enum):
+
+    MAIN= 'main'
+    TEST= 'test'
+
+class UserStatusDb(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+
+class UserStatusWithNone(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+    NONE= 'none'
+
+
+
+# ============= Server =============
+
+class ServerStatusDb(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+
+class ServerStatusWithNone(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+    NONE= 'none'
+
+class DeployStatus(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+
+class ServerType(str, Enum):
+
+    MAIN= 'main'
+    PROXY= 'proxy'
 
 class FetchStatusServer(str, Enum):
 
     ALL = 'all'
     ONE = 'one'
 
-class UpdateNodesResponse(BaseModel):
+class ServerRegister(BaseModel):
 
-    message: str
-    errors : List[Dict[str,str]]
-
+    server_ip: str
+    root_password: str
+    manager_password: str
+    location: str
+    ssh_port: int
+    max_users: int
+    ssh_accounts_number: int
+    v2ray_accounts_number: int
+    server_type: ServerType
+    generate_status: ServerStatusDb
+    update_expire_status: ServerStatusDb
+    status: ServerStatusDb
 
 class UpdateServerStatus(BaseModel):
 
     server_ip: str
+    new_generate_status: Optional[ServerStatusDb]    
+    new_update_expire_status: Optional[ServerStatusDb]    
+    new_status: Optional[ServerStatusDb]    
+
+class BestServerForNewConfig(BaseModel):
+
+    server_ip: str
+    ssh_port: int
+    ssh_accounts_number: int
+    max_users: int
 
 class UpdateMaxUserServer(BaseModel):
     
@@ -97,6 +134,7 @@ class ServerCaps(BaseModel):
 class NewServer(BaseModel):
 
     server_ip : str
+    server_type: ServerType
     location: str
     ssh_port: int
     max_users: int
@@ -104,8 +142,9 @@ class NewServer(BaseModel):
     v2ray_accounts_number: int
     root_password: str
     manager_password: str
-    status: ServerStatus
-
+    generate_status: ServerStatusDb
+    update_expire_status: ServerStatusDb
+    status: ServerStatusDb
 
 class ServerResponse(BaseModel):
 
@@ -113,60 +152,98 @@ class ServerResponse(BaseModel):
     location: str
     ssh_port: int
     max_users: int
+    root_password: str
+    manager_password: str
     ssh_accounts_number: int
     v2ray_accounts_number: int
-    status: ServerStatus
+    server_type: ServerType
+    generate_status: ServerStatusDb
+    update_expire_status: ServerStatusDb
+    status: ServerStatusDb
 
     class Config:
         
         orm_mode= True
 
+class UpdateNodesResponse(BaseModel):
 
-class NewSsh(BaseModel):
-
-    interface_id : int
-    name: Optional[str] = None
-    phone_number: Optional[PhoneNumberStr] = None
-    email: Optional[EmailStr] = None
-    chat_id: Optional[str] = None
-
-class NewSshResponse(BaseModel):
-
-    username: str
-    password: str
-    host: str
-    port: int
+    message: str
+    errors : List[Dict[str,str]]
 
 
-class ServiceType(str, Enum):
 
-    SSH = 'ssh'
-    V2RAY = 'v2ray'
+# ============= Domain =============
+
+class DomainStatusDb(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+
+class DomainStatusWithNone(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+    NONE= 'none'
+
+class DomainRegister(BaseModel):
+
+    domain_name: str
+    server_ip: str
+    status: DomainStatusDb
+
+class DomainRegisterForDb(BaseModel):
+
+    domain_name: str
+    identifier: str
+    server_ip: str
+    status: DomainStatusDb
+
+class NewDomainResponse(BaseModel):
+
+    domain_id: int
+    identifier: str
+    domain_name: str
+    server_ip: str
+    status: DomainStatusDb
+
+    class Config:
+        orm_mode = True
+
+class UpdateDomainStatus(BaseModel):
+
+    domain_name: str
+    new_status: DomainStatusDb
+
+class UpdateServerInDomain(BaseModel):
+
+    domain_name: str
+    server_ip: str
+
+class UpdateServerInDomainResponse(BaseModel):
+
+    domain_id : int
+    domain_name: str
+    server_ip: str
+    status: DomainStatusDb
+
+    class Config:
+        orm_mode = True
+
+class DomainResponse(BaseModel):
+
+    domain_id: int
+    domain_name: str
+    identifier: str
+    server_ip: str
+    status: DomainStatusDb
+
+    class Config:
+        orm_mode= True
 
 
-class UserInfo(BaseModel):
-
-    tel_id: str
 
 
-class DepositRequest(BaseModel):
-
-    value: float
-
-class SetNewBalance(BaseModel):
-
-    username: str
-    new_balance: Union[float, int]
-
-class DepositConfirmation(BaseModel):
-
-    tx_hash: str
-
-
-class AgentBalanceResponse(BaseModel):
-
-    balance: float
-
+# ============= Ssh =============
 
 class UpdateSshExpire(BaseModel):
 
@@ -184,11 +261,10 @@ class DeleteSsh(BaseModel):
 
     username : str
 
-
 class RenewSsh(BaseModel):
 
     username : str
-    new_interface_id: Optional[int]
+    new_domain_name: Optional[str]
 
 class BlockSsh(BaseModel):
 
@@ -198,13 +274,150 @@ class UnBlockSsh(BaseModel):
 
     username : str
 
-class UserRegister(BaseModel):
+class NewSsh(BaseModel):
 
-    tel_id: Optional[str] = None
+    plan_id : int
+    domain_name: Optional[str] = None
     name: Optional[str] = None
     phone_number: Optional[PhoneNumberStr] = None
     email: Optional[EmailStr] = None
-    role: UserRole
+    chat_id: Optional[str] = None
+
+class NewSshResponse(BaseModel):
+
+    username: str
+    password: str
+    host: str
+    port: int
+
+class NewSshForDataBase(BaseModel):
+
+    server_ip: str
+    status: Status
+
+class SshService(BaseModel):
+
+    service_type: ConfigType
+    agent_id: int
+    user_chat_id: Optional[str]
+    plan_id: int
+    domain_id: int
+    password: str
+    username: str
+    name: Optional[str]
+    phone_number: Optional[PhoneNumberStr]
+    email: Optional[EmailStr]
+    status: ServiceStatusDb
+    expire: datetime
+    created: datetime
+
+class UsersTransfer(BaseModel):
+
+    old_domain_name: str
+    new_domain_name: str
+    disable_old_domain: bool
+    disable_old_server: bool
+    delete_old_users: bool
+
+class UsersTransferResponse(BaseModel):
+
+    old_domain_name: str
+    new_domain_name: str
+    from_server: str
+    to_server: str
+    success_users: List[str]
+    create_exists_users: List[str]
+    block_not_exists_users: List[str]
+    delete_not_exists_users: List[str]
+
+class NewUserViaSshService(BaseModel):
+
+    chat_id: Optional[str] = None
+    name: Optional[str] = None
+    phone_number: Optional[PhoneNumberStr] = None
+    email: Optional[EmailStr] = None
+    agent_id: Optional[int] = None
+    plan_id: int
+    username: str
+    password: str
+    service_status: Status
+    created: datetime
+    expire: datetime
+
+class UserSShServiceDisplay(BaseModel):
+
+    service_id: int
+    service_type: ConfigType
+    domain_id: int
+    domain_name: str
+    plan_id: int
+    name: Optional[str]
+    email: Optional[EmailStr]
+    phone_number: Optional[PhoneNumberStr]
+    agent_id: int
+    password: str
+    username: str
+    created: datetime
+    expire: datetime
+    status: ServiceStatusDb
+
+    class Config:
+        orm_mode= True
+
+
+
+# ============= V2ray =============
+
+class UserV2rayServiceDisplay(BaseModel):
+
+    service_id: int
+
+
+
+# ============= Service =============
+
+class ServiceType(str, Enum):
+
+    SSH = 'ssh'
+    V2RAY = 'v2ray'
+
+
+class ServiceDisplay(BaseModel):
+
+    service_type: ServiceType
+    detail: Union[UserSShServiceDisplay, UserV2rayServiceDisplay]
+
+class UserServices(BaseModel):
+
+    services: List[ServiceDisplay]
+
+    class Config:
+        orm_mode= True
+
+
+
+# ============= User =============
+
+class UserFinancial(BaseModel):
+
+    user_id: int
+    username: str
+    password: str = None
+
+class UserInfo(BaseModel):
+
+    tel_id: str
+
+class UserAgentStatus(str, Enum):
+
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+    ALL= 'all'
+
+class UserRole(str ,Enum):
+
+    AGENT = 'agent'
+    ADMIN = 'admin'
 
 class UserRegisterForDataBase(BaseModel):
 
@@ -215,9 +428,57 @@ class UserRegisterForDataBase(BaseModel):
     bot_token: Optional[str] = None 
     username: str
     password: str
-    status: UserStatus
+    status: UserStatusDb
+    referal_link: str
+    parent_agent_id: int
+    subset_limit: int
     role: UserRole
 
+class UserRegister(BaseModel):
+
+    tel_id: Optional[str] = None
+    name: Optional[str] = None
+    phone_number: Optional[PhoneNumberStr] = None
+    email: Optional[EmailStr] = None
+    role: UserRole
+
+class UserDisplay(BaseModel):
+
+    user: UserRegisterForDataBase
+    balance: float
+    services: List[ServiceDisplay]
+
+    class Config:
+        orm_mode = True
+
+class UserServiceRegister(BaseModel):
+
+    ssh_service_id: int
+    user_id: int
+
+class UsersInfoAgent(BaseModel):
+
+    number_day_to_expire: int
+    status: Status
+
+class UsersInfoAgentResponse(BaseModel):
+
+    service_id: int
+    service_type: ConfigType
+    plan_id: int
+    domain_id: str
+    agent_id: int
+    username: str
+    password: str
+    name: Optional[str]
+    phone_number: Optional[str]
+    email: Optional[str]
+    status: ServiceStatusDb
+    created: datetime
+    expire: datetime
+
+    class Config:
+        orm_mode= True
 
 class AdminForDataBase(BaseModel):
 
@@ -234,95 +495,20 @@ class NewAgentForDataBase(BaseModel):
     password: str
     status: Status
 
-
 class AgentRequestForDataBase(BaseModel):
 
     user_id: int
     bot_token: str
 
-# class UserSShServiceDisplay(BaseModel):
-
-#     service_id: int
-#     server_ip: str
-#     ssh_port: int
-#     password: str
-#     username: str
-
-class ServiceType(str, Enum):
-
-    SSH = 'SSH'
-    V2RAY = 'V2RAY'
-
-
-class NewUserViaService(BaseModel):
-
-    chat_id: Optional[str] = None
-    name: Optional[str] = None
-    phone_number: Optional[PhoneNumberStr] = None
-    email: Optional[EmailStr] = None
-    agent_id: Optional[int] = None
-    interface_id: int
-    username: str
-    password: str
-    service_status: Status
-    created: datetime
-    expire: datetime
-
-class UserSShServiceDisplay(BaseModel):
-
-    service_id: int
-    host: str
-    port: int
-    interface_id: int
-    name: Optional[str]
-    email: Optional[EmailStr]
-    phone_number: Optional[PhoneNumberStr]
-    agent_id: int
-    password: str
-    username: str
-    expire: datetime
-    created: datetime
-    status: ServiceStatus
-    
-class UserV2rayServiceDisplay(BaseModel):
-
-    host: str
-    id: str
-    transport: str
-    expire: datetime
-    
-class ServiceDisplay(BaseModel):
-
-    service_type: ServiceType
-    detail: Union[UserSShServiceDisplay, UserV2rayServiceDisplay]
-
-class UserServices(BaseModel):
-
-    services: List[ServiceDisplay]
-
-    class Config:
-        orm_mode= True
-
-class UserDisplay(BaseModel):
-
-    user: UserRegisterForDataBase
-    balance: float
-    services: List[ServiceDisplay]
-
-    class Config:
-        orm_mode = True
-
-
-class NewUserViaServiceResponse(BaseModel):
+class NewUserViaSshServiceResponse(BaseModel):
 
     service_id: int
     agent_id: int
-
 
 class ChangeAgentStatus(BaseModel):
 
     username: str
-
+    new_status: UserStatusDb
 
 class NewAgentRequest(BaseModel):
 
@@ -333,8 +519,9 @@ class NewAgentRequest(BaseModel):
     bot_token: Optional[str] = None
     username: str
     password: str
-    status: UserStatus
-
+    subset_limit: Optional[int] = 5
+    referal_link: Optional[str]
+    status: UserStatusDb
 
 class AgentUpdateRequest(BaseModel):
 
@@ -347,39 +534,24 @@ class UpdateAgentPassword(BaseModel):
 
     password: str
 
+class PaymentMeothodPartnerShip(str, Enum):
+
+    WALLET = 'wallet'
+    WITHDRAW = 'withdraw'
+
+class ClaimPartnerShipProfit(BaseModel):
+
+    amount: float
+    method: PaymentMeothodPartnerShip
+
 class UpdateAgentBotToken(BaseModel):
 
     bot_token: str
 
-
-class UsersInfoAgent(BaseModel):
-
-    number_day_to_expire: int
-    status: Status
-
-
-class UsersInfoAgentResponse(BaseModel):
-
-    interface_id: int
-    service_id: int
-    server_ip: str
-    agent_id: int
-    username: str
-    password: str
-    name: Optional[str]
-    phone_number: Optional[str]
-    email: Optional[str]
-    port: str
-    status: ServiceStatus
-    created: datetime
-    expire: datetime
-
-    class Config:
-        orm_mode= True
-
 class AgentInfoResponse(BaseModel):
 
     agent_id: int
+    parent_agent_id: int
     chat_id: Optional[str]
     name: Optional[str]
     phone_number: Optional[str]
@@ -387,145 +559,152 @@ class AgentInfoResponse(BaseModel):
     bot_token: Optional[str]
     balance: float
     username: str
+    subset_not_released_profit: float
+    subset_total_profit: float
+    subset_number_of_configs: int
+    subset_number_limit: int
     total_user: int
     enable_ssh_services: int
     disable_ssh_services: int
     deleted_ssh_services: int
+    referal_link: str
+    parent_agent_id: int
     role: UserRole
-    status: UserStatus
-
-class DepositRequestResponse(BaseModel):
-
-    deposit_address: str
-    request_id: str
+    subset_list: List[str]
+    status: UserStatusDb
 
 class AgentListResponse(BaseModel):
 
     agent_id: int
+    parent_agent_id: int
     username: str
+    subset_not_released_profit: float
+    subset_total_profit: float
+    subset_number_of_new_configs: int
+    subset_number_of_update_configs: int
+    subset_limit: int
+    number_of_subsets: int
+    balance: float
     total_ssh_user: int
     enable_ssh_services: int
     disable_ssh_services: int
-    status: UserStatus    
+    referal_link: str
+    status: UserStatusDb
 
-class HTTPError(BaseModel):
+class ListSubsetResponse(BaseModel):
 
-    message: str 
-    internal_code: str
+    user_id: int
+    username: str
+    name: Union[str, None]
+    status: UserStatusDb
 
     class Config:
-        schema_extra = {
-            "example": {"detail": "HTTPException raised.", 'internal_code':1001},
-        }
-        
+        orm_mode = True
 
-class ServerRegister(BaseModel):
+class UpdateSubsetLimit(BaseModel):
 
-    server_ip: str
-    root_password: str
-    manager_password: str
-    location: str
-    ssh_port: int
-    max_users: int
-    ssh_accounts_number: int
-    v2ray_accounts_number: int
-    status: Status
-
-class NewSshForDataBase(BaseModel):
-
-    server_ip: str
-    status: Status
-
-
-class SshService(BaseModel):
-
-    server_ip: str
-    agent_id: int
-    user_chat_id: Optional[str]
-    interface_id: int
-    port: int
-    password: str
     username: str
-    name: Optional[str]
-    phone_number: Optional[PhoneNumberStr]
-    email: Optional[EmailStr]
-    limit: int
-    status: ServiceStatus
-    expire: datetime
-    created: datetime
+    new_limit: int
 
 
-class SshInterface(BaseModel):
+# ============= Plan =============
 
-    server_ip: str
-    location: str
-    port: int
+class SshPlan(BaseModel):
+
     limit: int
     price: int
     traffic: int
     duration: int
     status: Status
 
+class PlanStatusDb(str, Enum):
 
-class UserServiceRegister(BaseModel):
+    DISABLE= 'disable'
+    ENABLE= 'enable'
 
-    ssh_service_id: int
-    user_id: int
+class PlanStatusWithNone(str, Enum):
 
-class InterfaceMode(str, Enum):
+    DISABLE= 'disable'
+    ENABLE= 'enable'
+    NONE= 'none'
+
+class PlanMode(str, Enum):
 
     ALL = 'all'
     BEST = 'best'
 
 class PlanResponse(BaseModel):
 
-    interface_id: int
-    server_ip: str
+    plan_id: int
     duration: int
     limit: int
-    location: str
     price: int
     traffic: int
-    status: InterfaceStatus
+    status: PlanStatusDb
 
     class Config:
         orm_mode = True
 
+class SshPlanRegister(BaseModel):
 
-class SshInterfaceRegister(BaseModel):
-
-    server_ip: str
-    location: str
-    port: int
     limit: int
     price: float
     traffic: int
     duration: int
-    status: InterfaceStatus
+    status: PlanStatusDb
 
-class SshInterfaceState(BaseModel):
+class SshPlanState(BaseModel):
 
-    interface_id: int
+    plan_id: int
+    new_status: PlanStatusDb
 
-class SshInterfaceResponse(BaseModel):
+class SshPlanResponse(BaseModel):
 
-    interface_id: int
-    status: InterfaceStatus
+    plan_id: int
+    status: PlanStatusDb
 
-class NewSshInterfaceResponse(BaseModel):
+class NewSshPlanResponse(BaseModel):
 
-    interface_id: int
+    plan_id: int
 
-class UsersTransferToNewInterface(BaseModel):
+class UsersTransferToNewPlan(BaseModel):
 
-    old_interface_id: int
+    old_intface_id: int
     new_interface_id: int
     delete_old_users: bool = False
 
+
+
+# ============= Financial =============
+
+class DepositRequest(BaseModel):
+
+    value: float
+
+class DepositConfirmation(BaseModel):
+
+    tx_hash: str
+
+class DepositRequestResponse(BaseModel):
+
+    deposit_address: str
+    request_id: str
+
+class SetNewBalance(BaseModel):
+
+    username: str
+    value: Union[float, int]
+
+class AgentBalanceResponse(BaseModel):
+
+    balance: float
+
+
+# ============= Token =============
+#  
 class Token(BaseModel):
     access_token: str
     token_type: str
-
 
 class TokenData(BaseModel):
     user_id: int | None = None
@@ -536,3 +715,13 @@ class TokenUser(BaseModel):
 
     user_id: int
     role: UserRole
+
+
+# ============= Subset =============
+
+class CreateSubsetProfit(BaseModel):
+
+    user_id : int
+    not_released_profit: float
+    total_profit: float
+    number_of_configs: int

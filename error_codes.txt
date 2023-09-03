@@ -31,12 +31,41 @@
 2432= you shoud send at least username or chat_id
 2433= This Username have not any service
 2434= The user is blocked
-2435= There is no interface or server for renew config
+2435= There is no server for renew config
 2436= There is no best interface for renew config
 2437= This service had deleted
 2438= Authentication Failed
 2439= Error in init server
 2440= There is no server exists
+2441= email already exists
+2442= phone number already exists
+2443= this plan already exists
+2444= server already has this generate status
+2445= server already has this update expire status
+2446= there is no change status
+2447= domain already exists
+2449= Domain is not exists
+2450= There is no server for new config
+2451= This domain is disable 
+2452= The Server [{server_ip}] has disable (generation status)
+2453= The Server [{server_ip}] has disable (update expire status)
+2454= old domain is not exists
+2455= new domain is not exists
+2456= domain already has this status
+2457= You cannot disable all domains of this server
+2458= new domain and old domain have same server
+2459= you'r reach to max test account
+2460= regex domain is wrong ,right format is [xxx.abc-cluster.online]
+2461= this server have no any domain for used it
+2462 = the referal link is not exist
+2463= the parent agent reach to max subset limit
+2464= you'r not have subset configs yet
+2465= you'r not have enough subset configs
+2466= balance could not be less than zero
+2467= new domain is same with old domain
+2468= plan_id is not found
+2469= You used both water and wall and these two are not the same
+2470= Only admin has access to agent_username field
 
 # financial
 1003= There was a problem in registering the deposit request
@@ -60,6 +89,6 @@
 3511= create user [{username}] exception [{Exception}]
 3512= Error in executing command
 
-user_576917 3e24523c
-user_154371 a5ffedac
-user_234748 C##43614
+
+# cloudflare
+4600= cloudflare error

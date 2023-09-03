@@ -12,24 +12,27 @@ from schemas import (
     ServerResponse,
     UpdateMaxUserServer,
     UpdateServerStatus,
-    FetchStatusServer,
     HTTPError,
-    ServerStatus,
-    InterfaceStatus,
+    ServerStatusDb,
+    ServerStatusWithNone,
+    DeployStatus,
+    DomainStatusDb,
+    BestServerForNewConfig,
     UpdateNodesResponse
 )
 from db.database import get_db
-from db import db_server, db_ssh_interface
+from db import db_server, db_domain
 
-from slave_api.server import get_users, init_server
+from utils.server import find_best_server
+from slave_api.server import get_users, init_server, active_users
 from auth.auth import get_admin_user
 import paramiko
 from paramiko import AuthenticationException
 
 from time import sleep
-from typing import List
+from typing import List, Dict
 import logging
-import os
+import os   
 
 # Create a file handler to save logs to a file
 logger = logging.getLogger('server_route.log') 
@@ -51,14 +54,14 @@ router = APIRouter(prefix='/server', tags=['Server'])
 
 
 @router.post('/new', responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
-def add_new_server(request: NewServer, deploy_slave: ServerStatus = ServerStatus.ENABLE , current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus.ENABLE , current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
     server = db_server.get_server_by_ip(request.server_ip, db) 
     
     if server != None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'Server already exists', 'internal_code': 2405})
     
-    if deploy_slave == ServerStatus.ENABLE:
+    if deploy_slave == DeployStatus.ENABLE:
 
         slave_token = os.getenv('SLAVE_TOKEN')
 
@@ -109,7 +112,7 @@ def add_new_server(request: NewServer, deploy_slave: ServerStatus = ServerStatus
             logging.error(f"[new server] An error occurred (server_ip: {request.server_ip} -error: {e})")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
         
-        for _ in range(20):
+        for _ in range(30):
             sleep(1)
 
             _, err = get_users(request.server_ip)
@@ -131,7 +134,7 @@ def add_new_server(request: NewServer, deploy_slave: ServerStatus = ServerStatus
 @router.get('/nodes/update', response_model= UpdateNodesResponse , responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
-    servers = db_server.get_all_server(db, status= ServerStatus.ENABLE) 
+    servers = db_server.get_all_server(db, status= ServerStatusDb.ENABLE) 
     
     if servers == None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'There is no server exists', 'internal_code': 2440})
@@ -153,17 +156,14 @@ def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=D
     ls_error = {}
     for server in servers:
         
-        interfaces = db_ssh_interface.get_interface_by_server_ip(server.server_ip, db, status= InterfaceStatus.ENABLE)
+        flag_changed_status = False
 
-        changed_interfaces = []
-        for interface in interfaces:
-            if interface.status == InterfaceStatus.ENABLE:
-                changed_interfaces.append(interface)
-                db_ssh_interface.change_status(interface.interface_id, InterfaceStatus.DISABLE, db, commit= False)
-        
-        db.commit()
+        if server.generate_status == ServerStatusDb.ENABLE:
+            db_server.change_generate_status(server.server_ip, ServerStatusDb.DISABLE, db)
+            flag_changed_status= True
 
         try:
+            
             ssh_client = paramiko.SSHClient()
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh_client.connect(server.server_ip, username= 'manager', password= server.manager_password, port= server.ssh_port, timeout= 20*60)
@@ -197,18 +197,15 @@ def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=D
         except Exception as e:
             logging.error(f"-[update nodes] An error occurred (server_ip: {server.server_ip} -error: {e})")
             ls_error[server.server_ip] = f'Exception: [{e}]'
-        
-        for interface in changed_interfaces:
-            
-            db_ssh_interface.change_status(interface.interface_id, InterfaceStatus.ENABLE, db, commit= False)
-        
-        db.commit()
-        
+
         if server.server_ip in ls_error: 
             logger.error(f'[update nodes] failed to updated server (server_ip: {server.server_ip})')
         
         else:
             logger.info(f'[update nodes] successfully updated server (server_ip: {server.server_ip})')
+        
+        if flag_changed_status:
+            db_server.change_generate_status(server.server_ip, ServerStatusDb.ENABLE, db)
 
     errors = []
     if ls_error:
@@ -223,56 +220,82 @@ def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=D
     return UpdateNodesResponse(message= message, errors= errors)
 
 @router.get('/fetch', response_model= List[ServerResponse], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
-def fetch_server_or_servers(ip: str = None, mode: FetchStatusServer= FetchStatusServer.ALL, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def fetch_server_or_servers(ip: str = None,
+                            location: str= None,
+                            generate_status: ServerStatusDb = None,
+                            update_expire_status: ServerStatusDb = None,
+                            status_: ServerStatusDb = None,
+                            current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-    if mode == FetchStatusServer.ALL:
-        server = db_server.get_all_server(db)
-        
-        return server
+    args_dict = {
+        'server_ip': ip,
+        'location': location,
+        'generate_status': generate_status,
+        'update_expire_status': update_expire_status,
+        'status': status_
+    }
+    prepar_dict = {key: value for key, value in args_dict.items() if value is not None}
     
-    else:
+    resp_servers = db_server.get_servers_by_attrs(db, **prepar_dict)
 
-        server = db_server.get_server_by_ip(ip , db)
-        
-        if server is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'internal_code':2406, 'message':'Server is not exists'})
-
-        return [server]
+    return resp_servers
 
 
-@router.post('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
-def update_server_status(request: UpdateServerStatus , new_status: ServerStatus =Query(...) ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+@router.put('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+def update_server_status(request: UpdateServerStatus, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(request.server_ip, db)
 
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
     
-    if server.status == new_status:
+    if request.new_generate_status is None and request.new_update_expire_status is None and request.new_status is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2446, 'message':'there is no change status'})
+
+    if request.new_status and server.status == request.new_status:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'server already has this status', 'internal_code': 2431})
+    
+    if request.new_generate_status and server.generate_status == request.new_generate_status:
+        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'server already has this generate status', 'internal_code': 2444})
+    
+    if request.new_update_expire_status and server.update_expire_status == request.new_update_expire_status:
+        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'server already has this update expire status', 'internal_code': 2445})
+
+    if request.new_generate_status:
+        if server.status == ServerStatusDb.DISABLE:
+            raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': f'The Server [{request.server_ip}] has disable', 'internal_code': 2427})
+
+        db_server.change_generate_status(request.server_ip, request.new_generate_status, db)
+
+    if request.new_update_expire_status:
+        if server.status == ServerStatusDb.DISABLE:
+            raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': f'The Server [{request.server_ip}] has disable', 'internal_code': 2427})
+        
+        db_server.change_update_expire_status(request.server_ip, request.new_update_expire_status, db)
 
     try:
-        # ==================== Begin ====================
-        if new_status == ServerStatus.DISABLE:
+        if request.new_status:
+            if request.new_status == ServerStatusDb.DISABLE:
+                domains = db_domain.get_domains_by_server_ip(request.server_ip, db, DomainStatusDb.ENABLE)
 
-            interfaces = db_ssh_interface.get_interface_by_server_ip(request.server_ip, db, status= InterfaceStatus.ENABLE)
+                for domain in domains:
+                    db_domain.change_status(domain.domain_id, DomainStatusDb.DISABLE, db, commit= False)
+                    
+                db_server.change_generate_status(request.server_ip, ServerStatusDb.DISABLE, db, commit= False)
+                db_server.change_update_expire_status(request.server_ip, ServerStatusDb.DISABLE, db, commit= False)
 
-            for interface in interfaces:
-                
-                db_ssh_interface.change_status(interface.interface_id, InterfaceStatus.DISABLE, db, commit= False)
-            
-        db_server.change_status(request.server_ip, new_status, db, commit= False)
-        db.commit()
-        # ==================== Commit ====================
+            db_server.change_server_status(request.server_ip, request.new_status, db, commit= False)
+    
+            db.commit()
         
     except Exception as e:
-        logger.error(f'[change server status] error while change status to {new_status} (server_ip: {request.server_ip} -error: {e})')
+        logger.error(f'[change server status] error while change status (server_ip: {request.server_ip} -to_status(gen_upd_ser): {request.new_generate_status}_{request.new_update_expire_status}_{request.new_status} -error: {e})')
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
 
-    logger.info(f'[change server status] successfully (server_ip: {request.server_ip}) -status: {new_status})')
+    logger.info(f'[change server status] successfully (server_ip: {request.server_ip}) -gen_upd_ser: {request.new_generate_status}_{request.new_update_expire_status}_{request.new_status})')
     
-    return 'Server status successfully changed!'
+    return f'Server status successfully changed to gen_upd_ser: {request.new_generate_status}_{request.new_update_expire_status}_{request.new_status}'
 
 
 @router.get('/users', response_model= List[str], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
@@ -290,8 +313,34 @@ def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_
 
     return resp
 
+@router.get('/best', response_model= BestServerForNewConfig, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
+def get_server_users(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-@router.post('/max_users', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+    selected_server = find_best_server(db)
+
+    if selected_server is None :
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2450, 'message':'There is no server for new config'})
+
+    return selected_server
+
+
+@router.get('/active_users', response_model= List[Dict], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
+def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+
+    server = db_server.get_server_by_ip(server_ip, db)
+
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
+    
+    resp, err = active_users(server_ip)
+    if err:
+        logger.error(f'[active users] error (server_ip: {server_ip}) -detail: {err.detail})')
+        raise err
+
+    return resp
+
+
+@router.put('/max_users', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def update_server_max_users(request: UpdateMaxUserServer ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(request.server_ip, db)
