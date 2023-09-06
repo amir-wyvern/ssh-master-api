@@ -165,7 +165,7 @@ def create_test_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(
         db_server.increase_ssh_accounts_number(selected_server.server_ip, db, commit=False)
         db.commit()
         db.refresh(service)
-    
+
     except Exception as e:
         logger.error(f'[new test ssh] error in database (agent: {current_user.user_id} -username: {username} -error: {e})')
         db.rollback()

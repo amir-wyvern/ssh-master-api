@@ -122,12 +122,30 @@ def get_services_by_search(
         prepar_dict['expire'] = end_expire_time
     
     resp_services = db_ssh_service.get_services_by_attrs(db, **prepar_dict)
+    prepar_services = []
 
     for refrence_service in resp_services:
         domain_name_srevice = db_domain.get_domain_by_id(refrence_service.domain_id, db)
-        refrence_service['domain_name'] = domain_name_srevice.domain_name
+        prepar_services.append(
+            {
+                'service_id': refrence_service.service_id,
+                'service_type': refrence_service.service_type,
+                'domain_id': refrence_service.domain_id,
+                'domain_name': domain_name_srevice.domain_name,
+                'plan_id': refrence_service.plan_id,
+                'name': refrence_service.name,
+                'email': refrence_service.email,
+                'phone_number': refrence_service.phone_number,
+                'agent_id': refrence_service.agent_id,
+                'password': refrence_service.password,
+                'username': refrence_service.username,
+                'created': refrence_service.created,
+                'expire': refrence_service.expire,
+                'status': refrence_service.status
+            }
+        )
 
-    return resp_services
+    return prepar_services
 
 
 

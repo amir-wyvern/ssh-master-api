@@ -709,7 +709,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     user_id: int | None = None
     role: UserRole | None = None
-    scopes: list[str] = []
+    scopes: List[str] = []
 
 class TokenUser(BaseModel):
 
