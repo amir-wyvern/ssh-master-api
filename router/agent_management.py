@@ -116,8 +116,7 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
         user_id= user.user_id,
         not_released_profit= 0,
         total_profit= 0,
-        number_of_new_configs= 0,
-        number_of_update_configs= 0), db)
+        number_of_configs= 0), db)
     
     logger.info(f'[creation agent] successfully ({request.username})')
 
