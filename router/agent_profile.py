@@ -11,13 +11,14 @@ from schemas import (
     AgentInfoResponse,
     UpdateAgentPassword,
     UpdateAgentBotToken,
+    UpdateAgentChatID,
     TokenUser,
     UserRole,
+    ConfigType,
     ServiceStatusDb,
     ClaimPartnerShipProfit,
     PaymentMeothodPartnerShip
 )
-from typing import List
 from db import db_user, db_ssh_service, db_subset
 from db.database import get_db
 from auth.auth import  get_agent_user
@@ -67,7 +68,7 @@ def get_agent_information(username: str= Query(None,description='This filed (age
         logger.error(f'[agent info] get balance (user_id: {user_id} -error: {err.detail})')
         raise err
 
-    services = db_ssh_service.get_services_by_agent_id(user_id, db) 
+    services = db_ssh_service.get_services_by_agent_id(user_id, db, type_= ConfigType.MAIN) 
 
     all_services = 0
     enable_services = 0
@@ -131,7 +132,7 @@ def update_agent_password(request: UpdateAgentPassword, current_user: TokenUser=
 
 
 @router.post('/subset/profit', response_model= str, responses={status.HTTP_401_UNAUTHORIZED:{'model':HTTPError}})
-def clain_partnership_profit(request: ClaimPartnerShipProfit, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
+def claim_partnership_profit(request: ClaimPartnerShipProfit, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
     if current_user.role == UserRole.ADMIN :
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
@@ -141,7 +142,7 @@ def clain_partnership_profit(request: ClaimPartnerShipProfit, current_user: Toke
     if user_subset == None or user_subset.not_released_profit == 0:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': "you'r not have subset configs yet", 'internal_code': 2464})
     
-    if request.amount > user_subset.not_released_profit:
+    if request.value > user_subset.not_released_profit:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': "you'r not have enough subset configs", 'internal_code': 2465})
 
     agent = db_user.get_user_by_user_id(current_user.user_id, db)
@@ -153,20 +154,19 @@ def clain_partnership_profit(request: ClaimPartnerShipProfit, current_user: Toke
             logger.error(f'[subset profit] get balance (username: {agent.username} -error: {err.detail})')
             raise err
         
-        new_balance = request.amount + resp_balance['balance']
+        new_balance = request.value + resp_balance['balance']
         _, err = set_balance(current_user.user_id, new_balance)
         if err:
             logger.error(f'[subset profit] error in set balance (username: {agent.username}, error: {err.detail})')
             raise err
         
-        db_subset.decrease_not_released_profit_by_user(current_user.user_id, request.amount, db)
+        db_subset.decrease_not_released_profit_by_user(current_user.user_id, request.value, db)
 
-        logger.info(f'[subset profit] successfully transfer profit to wallet (username: {agent.username} -used_amount: {request.amount} -new_balance: {new_balance})')
+        logger.info(f'[subset profit] successfully transfer profit to wallet (username: {agent.username} -used_value: {request.value} -new_balance: {new_balance})')
 
 
     elif  request.method == PaymentMeothodPartnerShip.WITHDRAW:
         return 'This part is not yet complete'
-
 
 
     return 'successfully Done'
@@ -179,4 +179,13 @@ def update_agent_bot_token(request: UpdateAgentBotToken, current_user: TokenUser
     logger.info(f'[change agent bot token] successfully (user_id: {current_user.user_id})')
 
     return 'the agent bot_token successfully has changed'
+
+ 
+@router.put('/chat_id', response_model= str, responses={status.HTTP_401_UNAUTHORIZED:{'model':HTTPError}})
+def update_agent_chat_id(request: UpdateAgentChatID, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
+
+    db_user.update_chat_id(current_user.user_id, request.new_chat_id, db)
+    logger.info(f'[change agent chat_id] successfully (user_id: {current_user.user_id})')
+
+    return 'the agent chat_id successfully has changed'
 
