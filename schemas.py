@@ -541,12 +541,16 @@ class PaymentMeothodPartnerShip(str, Enum):
 
 class ClaimPartnerShipProfit(BaseModel):
 
-    amount: float
+    value: float
     method: PaymentMeothodPartnerShip
 
 class UpdateAgentBotToken(BaseModel):
 
     bot_token: str
+
+class UpdateAgentChatID(BaseModel):
+
+    new_chat_id: str
 
 class AgentInfoResponse(BaseModel):
 
