@@ -143,6 +143,14 @@ def update_bot_token(user_id, bot_token: str, db:Session):
     
     return True 
 
+def update_chat_id(user_id, chat_id: str, db:Session):
+
+    user = db.query(DbUser).filter(DbUser.user_id == user_id )
+    user.update({DbUser.chat_id: chat_id})
+    db.commit()
+    
+    return True 
+
 def update_subset_limit(user_id, limit: int, db:Session):
 
     user = db.query(DbUser).filter(DbUser.user_id == user_id )
