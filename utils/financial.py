@@ -6,7 +6,6 @@ from sqlalchemy.orm.session import Session
 from schemas import UserFinancial
 from sqlalchemy.orm.session import Session
 from financial_api.user import get_balance 
-from financial_api.transfer import transfer 
 import logging
 
 

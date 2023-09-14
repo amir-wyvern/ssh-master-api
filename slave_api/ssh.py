@@ -12,8 +12,8 @@ def header():
         }
 
 def create_ssh_account(server_ip, username, password, ignore_exists_users= False):
-    
-    data = { 
+
+    data = {
         'ignore_exists_users': ignore_exists_users,
         'users': [{
             'username': username,
@@ -24,10 +24,10 @@ def create_ssh_account(server_ip, username, password, ignore_exists_users= False
             resp = requests.post(url=f'http://{server_ip}:8090/ssh/create', json= data, headers= header(), timeout=20)
             if resp.status_code == 200:
                 break
-        
+
         if resp.status_code != 200:
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
-        
+
         return resp.json(), None
     
     except ConnectTimeout:
