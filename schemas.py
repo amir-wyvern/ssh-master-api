@@ -44,6 +44,7 @@ class ServiceStatusDb(str, Enum):
 
     DISABLE= 'disable'
     ENABLE= 'enable'
+    EXPIRED= 'expired'
     DELETED= 'deleted'
 
 class ConfigType(str, Enum):
@@ -121,10 +122,21 @@ class BestServerForNewConfig(BaseModel):
     ssh_accounts_number: int
     max_users: int
 
+class UsersResponse(BaseModel):
+
+    detail: List[str]
+    number_of_users: int
+
 class UpdateMaxUserServer(BaseModel):
     
     server_ip: str
     new_max_user: int = Field(gt=0)
+
+class ActiveUsersResponse(BaseModel):
+
+    detail: List[Dict]
+    active_sessions: int
+    active_users: int
 
 class ServerCaps(BaseModel):
 
@@ -350,6 +362,7 @@ class UserSShServiceDisplay(BaseModel):
     service_type: ConfigType
     domain_id: int
     domain_name: str
+    ssh_port: int
     plan_id: int
     name: Optional[str]
     email: Optional[EmailStr]
@@ -570,7 +583,9 @@ class AgentInfoResponse(BaseModel):
     total_user: int
     enable_ssh_services: int
     disable_ssh_services: int
+    expired_ssh_services: int
     deleted_ssh_services: int
+    test_ssh_services: int
     referal_link: str
     parent_agent_id: int
     role: UserRole
@@ -584,14 +599,15 @@ class AgentListResponse(BaseModel):
     username: str
     subset_not_released_profit: float
     subset_total_profit: float
-    subset_number_of_new_configs: int
-    subset_number_of_update_configs: int
+    subset_number_of_configs: int
     subset_limit: int
     number_of_subsets: int
     balance: float
     total_ssh_user: int
     enable_ssh_services: int
     disable_ssh_services: int
+    expired_ssh_servives: int
+    deleted_ssh_servives: int
     referal_link: str
     status: UserStatusDb
 
@@ -729,3 +745,5 @@ class CreateSubsetProfit(BaseModel):
     not_released_profit: float
     total_profit: float
     number_of_configs: int
+
+

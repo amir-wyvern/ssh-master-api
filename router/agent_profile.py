@@ -69,10 +69,12 @@ def get_agent_information(username: str= Query(None,description='This filed (age
         raise err
 
     services = db_ssh_service.get_services_by_agent_id(user_id, db, type_= ConfigType.MAIN) 
+    services_test = db_ssh_service.get_services_by_agent_id(user_id, db, type_= ConfigType.TEST) 
 
     all_services = 0
     enable_services = 0
     disable_services = 0
+    expired_services = 0
     deleted_services = 0
 
     if services :
@@ -88,11 +90,14 @@ def get_agent_information(username: str= Query(None,description='This filed (age
             elif service.status == ServiceStatusDb.DELETED:
                 deleted_services += 1
 
+            elif service.status == ServiceStatusDb.EXPIRED:
+                expired_services += 1
+
     user = db_user.get_user_by_user_id(user_id, db) 
     user_subset = db_subset.get_subset_by_user(user.user_id, db)
 
     subset_list = []
-    for subset in db_user.get_users_by_parent_agent_id(user.parent_agent_id, db):
+    for subset in db_user.get_users_by_parent_agent_id(user.user_id, db):
         subset_list.append(subset.username)
 
     data = {
@@ -112,7 +117,9 @@ def get_agent_information(username: str= Query(None,description='This filed (age
         'total_user': all_services,
         'enable_ssh_services': enable_services,
         'disable_ssh_services': disable_services,
+        'expired_ssh_services': expired_services,
         'deleted_ssh_services': deleted_services,
+        'test_ssh_services': len(services_test),
         'referal_link': user.referal_link,
         'parent_agent_id': user.parent_agent_id,
         'role': user.role,
@@ -138,11 +145,13 @@ def claim_partnership_profit(request: ClaimPartnerShipProfit, current_user: Toke
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail={'message': "admin can't access to this item", 'internal_code': 2418})
 
     user_subset = db_subset.get_subset_by_user(current_user.user_id ,db)
-    
-    if user_subset == None or user_subset.not_released_profit == 0:
+
+    if user_subset == None:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': "you'r not have subset configs yet", 'internal_code': 2464})
     
-    if request.value > user_subset.not_released_profit:
+    not_released_profit = float(user_subset.not_released_profit)
+
+    if not_released_profit == 0.0 or request.value > not_released_profit:
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': "you'r not have enough subset configs", 'internal_code': 2465})
 
     agent = db_user.get_user_by_user_id(current_user.user_id, db)

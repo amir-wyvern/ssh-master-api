@@ -16,7 +16,8 @@ from schemas import (
     TokenUser,
     ListSubsetResponse,
     UpdateSubsetLimit,
-    CreateSubsetProfit
+    CreateSubsetProfit,
+    ConfigType
 )
 from db import db_user, db_ssh_service, db_subset
 from db.database import get_db
@@ -148,11 +149,13 @@ def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Sessio
     ls_resp = []
     for agent in agents:
 
-        services = db_ssh_service.get_services_by_agent_id(agent.user_id, db)
+        services = db_ssh_service.get_services_by_agent_id(agent.user_id, db, type_= ConfigType.MAIN)
+        test_services = db_ssh_service.get_services_by_agent_id(agent.user_id, db, type_= ConfigType.TEST)
         
         all_services = 0
         enable_services = 0
         disable_services = 0
+        expired_services = 0
         deleted_services = 0
 
         if services :
@@ -167,6 +170,9 @@ def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Sessio
 
                 elif service.status == ServiceStatusDb.DELETED:
                     deleted_services += 1
+
+                elif service.status == ServiceStatusDb.EXPIRED:
+                    expired_services += 1
 
         resp_balance, err = get_balance(agent.user_id)
         if err:
@@ -190,7 +196,9 @@ def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Sessio
             'total_ssh_user': all_services,
             'enable_ssh_services': enable_services,
             'disable_ssh_services': disable_services,
+            'expired_ssh_services': expired_services,
             'deleted_ssh_services': deleted_services,
+            'test_ssh_services': len(test_services),
             'status': agent.status
         }
 

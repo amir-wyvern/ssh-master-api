@@ -2,7 +2,6 @@ from fastapi import (
     APIRouter,
     Depends,
     status,
-    Query,
     HTTPException
 )
 from sqlalchemy.orm.session import Session
@@ -14,9 +13,10 @@ from schemas import (
     UpdateServerStatus,
     HTTPError,
     ServerStatusDb,
-    ServerStatusWithNone,
+    ActiveUsersResponse,
     DeployStatus,
     DomainStatusDb,
+    UsersResponse,
     BestServerForNewConfig,
     UpdateNodesResponse
 )
@@ -298,7 +298,7 @@ def update_server_status(request: UpdateServerStatus, current_user: TokenUser= D
     return f'Server status successfully changed to gen_upd_ser: {request.new_generate_status}_{request.new_update_expire_status}_{request.new_status}'
 
 
-@router.get('/users', response_model= List[str], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
+@router.get('/users', response_model= UsersResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
 def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(server_ip, db)
@@ -310,8 +310,8 @@ def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_
     if err:
         logger.error(f'[get users] error (server_ip: {server_ip}) -detail: {err.detail})')
         raise err
-
-    return resp
+    
+    return UsersResponse(detail= resp, number_of_users= len(resp))
 
 @router.get('/best', response_model= BestServerForNewConfig, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
 def get_server_users(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
@@ -324,7 +324,7 @@ def get_server_users(current_user: TokenUser= Depends(get_admin_user), db: Sessi
     return selected_server
 
 
-@router.get('/active_users', response_model= List[Dict], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
+@router.get('/active_users', response_model= ActiveUsersResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
 def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(server_ip, db)
@@ -337,7 +337,9 @@ def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_
         logger.error(f'[active users] error (server_ip: {server_ip}) -detail: {err.detail})')
         raise err
 
-    return resp
+    number_active_users = len(resp)
+    number_active_sessions = sum([item['count'] for item in resp])
+    return ActiveUsersResponse(detail= resp, active_users= number_active_users, active_sessions= number_active_sessions)
 
 
 @router.put('/max_users', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})

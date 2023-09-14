@@ -16,7 +16,7 @@ from schemas import (
     ServiceStatusDb,
     UserSShServiceDisplay,
 )
-from db import db_ssh_service, db_domain, db_user, db_ssh_plan
+from db import db_ssh_service, db_domain, db_user, db_ssh_plan, db_server
 from db.database import get_db
 from auth.auth import get_agent_user
 from datetime import datetime
@@ -126,12 +126,14 @@ def get_services_by_search(
 
     for refrence_service in resp_services:
         domain_name_srevice = db_domain.get_domain_by_id(refrence_service.domain_id, db)
+        service_ip = db_server.get_server_by_ip(domain_name_srevice.server_ip, db)
         prepar_services.append(
             {
                 'service_id': refrence_service.service_id,
                 'service_type': refrence_service.service_type,
                 'domain_id': refrence_service.domain_id,
                 'domain_name': domain_name_srevice.domain_name,
+                'ssh_port': service_ip.ssh_port,
                 'plan_id': refrence_service.plan_id,
                 'name': refrence_service.name,
                 'email': refrence_service.email,
