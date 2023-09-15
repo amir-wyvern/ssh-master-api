@@ -528,6 +528,11 @@ class NewAgentRequest(BaseModel):
     referal_link: Optional[str]
     status: UserStatusDb
 
+class NewAgentResponse(BaseModel):
+
+    agent_id: int
+    referal_link: str
+
 class AgentUpdateRequest(BaseModel):
 
     user_id: int

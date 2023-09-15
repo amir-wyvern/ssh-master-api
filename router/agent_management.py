@@ -17,6 +17,7 @@ from schemas import (
     ListSubsetResponse,
     UpdateSubsetLimit,
     CreateSubsetProfit,
+    NewAgentResponse,
     ConfigType
 )
 from db import db_user, db_ssh_service, db_subset
@@ -48,7 +49,7 @@ logger.addHandler(console_handler)
 router = APIRouter(prefix='/agent', tags=['Agent-Menagement'])
 
 
-@router.post('/new', response_model= str,responses={status.HTTP_409_CONFLICT:{'model':HTTPError}, status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+@router.post('/new', response_model= NewAgentResponse,responses={status.HTTP_409_CONFLICT:{'model':HTTPError}, status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     agent = db_user.get_user_by_username(request.username, db)
@@ -121,7 +122,7 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
     
     logger.info(f'[creation agent] successfully ({request.username})')
 
-    return 'agent successfully registered'
+    return NewAgentResponse(agent_id=user.user_id, referal_link= referal_link)
 
 
 @router.put('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
