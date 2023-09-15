@@ -747,3 +747,21 @@ class CreateSubsetProfit(BaseModel):
     number_of_configs: int
 
 
+
+# ================ Notification ================
+
+class NotificationStatus(Enum, str):
+
+    SUCCESSFULL= 'successfull'
+    FAILED= 'failed'
+
+class PublishNotification(BaseModel):
+
+    message: str
+    except_agents: Optional[List[str]]
+    accept_agents: Optional[List[str]]
+
+class PublishNotificationResponse(BaseModel):
+
+    status: NotificationStatus
+    failed_users: List[str]
