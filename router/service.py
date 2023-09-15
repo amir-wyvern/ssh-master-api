@@ -86,13 +86,14 @@ def get_services_by_search(
 
     if username:
 
-        service =db_ssh_service.get_service_by_username(username, db)
+        service = db_ssh_service.get_service_by_username(username, db)
         if service is None:
             raise  HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail={'message': 'This Username have not any active service', 'internal_code': 2433})
 
         if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
 
+        user_id = service.agent_id
 
     if plan_id:
         plan = db_ssh_plan.get_plan_by_id(plan_id, db)
@@ -124,14 +125,14 @@ def get_services_by_search(
     prepar_services = []
 
     for refrence_service in resp_services:
-        domain_name_srevice = db_domain.get_domain_by_id(refrence_service.domain_id, db)
-        service_ip = db_server.get_server_by_ip(domain_name_srevice.server_ip, db)
+        domain_name_service = db_domain.get_domain_by_id(refrence_service.domain_id, db)
+        service_ip = db_server.get_server_by_ip(domain_name_service.server_ip, db)
         prepar_services.append(
             {
                 'service_id': refrence_service.service_id,
                 'service_type': refrence_service.service_type,
                 'domain_id': refrence_service.domain_id,
-                'domain_name': domain_name_srevice.domain_name,
+                'domain_name': domain_name_service.domain_name,
                 'ssh_port': service_ip.ssh_port,
                 'plan_id': refrence_service.plan_id,
                 'name': refrence_service.name,
@@ -146,7 +147,7 @@ def get_services_by_search(
             }
         )
 
-    return SearchResponse(count= len(prepar_services), results= prepar_services)
+    return SearchResponse(count= len(prepar_services), result= prepar_services)
 
 
 
