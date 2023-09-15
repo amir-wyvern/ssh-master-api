@@ -707,6 +707,11 @@ class SetNewBalance(BaseModel):
     username: str
     value: Union[float, int]
 
+class NewBalanceResponse(BaseModel):
+
+    username: str
+    current_balance: Union[float, int]
+
 class AgentBalanceResponse(BaseModel):
 
     balance: float

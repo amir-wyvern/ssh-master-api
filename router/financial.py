@@ -12,7 +12,8 @@ from schemas import (
     DepositRequest,
     SetNewBalance,
     TokenUser,
-    UserRole
+    UserRole,
+    NewBalanceResponse
 )
 from db import db_user
 from db.database import get_db
@@ -54,7 +55,7 @@ def generate_password():
     return hashed_password
 
 
-@router.put('/balance', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}}, tags=['Agent-Menagement'])
+@router.put('/balance', response_model= NewBalanceResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}}, tags=['Agent-Menagement'])
 def update_agent_balance(request: SetNewBalance, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     agent = db_user.get_user_by_username(request.username, db)
@@ -78,7 +79,7 @@ def update_agent_balance(request: SetNewBalance, current_user: TokenUser= Depend
         raise err
     
     logger.info(f'[update agent balance] successfully (username: {request.username} -new_balance: {new_balance})')
-    return 'request balance update was successfully'
+    return NewBalanceResponse(username=request.username, current_balance= new_balance)
 
 
 @router.post('/deposit/request', response_model= DepositRequestResponse, responses={
