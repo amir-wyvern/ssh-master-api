@@ -447,14 +447,6 @@ class UserRegisterForDataBase(BaseModel):
     subset_limit: int
     role: UserRole
 
-class UserRegister(BaseModel):
-
-    tel_id: Optional[str] = None
-    name: Optional[str] = None
-    phone_number: Optional[PhoneNumberStr] = None
-    email: Optional[EmailStr] = None
-    role: UserRole
-
 class UserDisplay(BaseModel):
 
     user: UserRegisterForDataBase
