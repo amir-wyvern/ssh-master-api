@@ -750,7 +750,7 @@ class CreateSubsetProfit(BaseModel):
 
 # ================ Notification ================
 
-class NotificationStatus(Enum, str):
+class NotificationStatus(str, Enum):
 
     SUCCESSFULL= 'successfull'
     FAILED= 'failed'

@@ -30,7 +30,7 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-vpn_cluster_bot_token = os.getenv('vpn_cluster_bot_token')
+vpn_cluster_bot_token = os.getenv('VPN_CLUSTER_BOT_TOKEN')
 vpn_cluster_bot = Bot(vpn_cluster_bot_token)
 
 
