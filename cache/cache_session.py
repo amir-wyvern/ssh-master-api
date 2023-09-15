@@ -39,8 +39,8 @@ def get_test_account_number(user_id, db: redis.Redis):
         return 0
 
 def set_last_domain(value, db: redis.Redis):
-    return db.set('last_doamin', value)
+    return db.set('last_domain', value)
 
 def get_last_domain(db: redis.Redis):
-    return db.get('last_doamin')
+    return db.get('last_domain')
 
