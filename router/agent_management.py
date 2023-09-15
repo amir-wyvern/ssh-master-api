@@ -109,7 +109,7 @@ def create_new_agent(request: NewAgentRequest, current_user: TokenUser= Depends(
     _, err = create_user_if_not_exist(user.user_id)
     
     if err :
-        logger.error(f'[creation agent] failed create the agent [agent: {current_user.user_id} -username: {request.username} -resp_code: {err.resp_code} -error: {err.detail}]')
+        logger.error(f'[creation agent] failed create the agent [agent: {current_user.user_id} -username: {request.username} -resp_code: {err.status_code} -error: {err.detail}]')
         db_user.delete_user(user.user_id, db)
         raise err
     
