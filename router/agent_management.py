@@ -181,7 +181,7 @@ def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Sessio
             resp_balance = {'balance': '***'}
 
         agent_subset = db_subset.get_subset_by_user(agent.user_id, db)
-        number_of_subsets = len(db_user.get_users_by_parent_agent_id(agent.parent_agent_id, db))
+        number_of_subsets = len(db_user.get_users_by_parent_agent_id(agent.user_id, db))
         
         data = {
             'agent_id': agent.user_id,
