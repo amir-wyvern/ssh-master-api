@@ -124,8 +124,8 @@ class BestServerForNewConfig(BaseModel):
 
 class UsersResponse(BaseModel):
 
-    detail: List[str]
-    number_of_users: int
+    count: int
+    result: List[str]
 
 class UpdateMaxUserServer(BaseModel):
     
@@ -176,6 +176,11 @@ class ServerResponse(BaseModel):
     class Config:
         
         orm_mode= True
+
+class FetchServerResponse(BaseModel):
+
+    count: int
+    result: List[ServerResponse]
 
 class UpdateNodesResponse(BaseModel):
 
@@ -252,7 +257,10 @@ class DomainResponse(BaseModel):
     class Config:
         orm_mode= True
 
+class FetchDomainResponse(BaseModel):
 
+    count: int
+    result: List[DomainResponse]
 
 
 # ============= Ssh =============
@@ -377,7 +385,10 @@ class UserSShServiceDisplay(BaseModel):
     class Config:
         orm_mode= True
 
+class SearchResponse(BaseModel):
 
+    count: int
+    result: List[UserSShServiceDisplay] 
 
 # ============= V2ray =============
 
@@ -608,6 +619,11 @@ class AgentListResponse(BaseModel):
     referal_link: str
     status: UserStatusDb
 
+class FetchAgentListResponse(BaseModel):
+
+    count: int
+    result: List[AgentListResponse]
+
 class ListSubsetResponse(BaseModel):
 
     user_id: int
@@ -661,6 +677,11 @@ class PlanResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+class FetchPlanResponse(BaseModel):
+
+    count: int
+    result: List[PlanResponse]
 
 class SshPlanRegister(BaseModel):
 

@@ -8,7 +8,7 @@ from sqlalchemy.orm.session import Session
 from schemas import (
     PlanStatusDb,
     SshPlanState,
-    PlanResponse,
+    FetchPlanResponse,
     SshPlanRegister,
     SshPlanResponse,
     HTTPError,
@@ -39,7 +39,7 @@ logger.addHandler(console_handler)
 
 router = APIRouter(prefix='/plan', tags=['Plan'])
 
-@router.get('/ssh/fetch', response_model= List[PlanResponse])
+@router.get('/ssh/fetch', response_model= FetchPlanResponse)
 def fetch_ssh_plan(plan_id: int = None, limit: int= None, price:float =None, duration: int= None, status_: PlanStatusDb = None, current_user: TokenUser= Depends(get_agent_user), db: Session=Depends(get_db)):
 
     args_dict = {
@@ -53,7 +53,7 @@ def fetch_ssh_plan(plan_id: int = None, limit: int= None, price:float =None, dur
 
     resp_plan = db_ssh_plan.get_plans_by_attrs(db, **prepar_dict)
     
-    return resp_plan
+    return FetchPlanResponse(count= len(resp_plan), result= resp_plan) 
 
 
 @router.post('/ssh/new', response_model= NewSshPlanResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError} })

@@ -14,13 +14,12 @@ from schemas import (
     EmailStr,
     PhoneNumberStr,
     ServiceStatusDb,
-    UserSShServiceDisplay,
+    SearchResponse
 )
 from db import db_ssh_service, db_domain, db_user, db_ssh_plan, db_server
 from db.database import get_db
 from auth.auth import get_agent_user
 from datetime import datetime
-from typing import List
 import logging
 
 # Create a file handler to save logs to a file
@@ -43,7 +42,7 @@ logger.addHandler(console_handler)
 router = APIRouter(prefix='/service', tags=['Service'])
 
 
-@router.get('/search', response_model= List[UserSShServiceDisplay], responses={
+@router.get('/search', response_model= SearchResponse, responses={
     status.HTTP_404_NOT_FOUND:{'model':HTTPError},
     status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}, 
     status.HTTP_409_CONFLICT:{'model':HTTPError}},
@@ -147,7 +146,7 @@ def get_services_by_search(
             }
         )
 
-    return prepar_services
+    return SearchResponse(count= len(prepar_services), results= prepar_services)
 
 
 

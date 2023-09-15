@@ -8,7 +8,7 @@ from sqlalchemy.orm.session import Session
 from schemas import (
     TokenUser,
     NewServer,
-    ServerResponse,
+    FetchServerResponse,
     UpdateMaxUserServer,
     UpdateServerStatus,
     HTTPError,
@@ -219,7 +219,7 @@ def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=D
 
     return UpdateNodesResponse(message= message, errors= errors)
 
-@router.get('/fetch', response_model= List[ServerResponse], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+@router.get('/fetch', response_model= FetchServerResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def fetch_server_or_servers(ip: str = None,
                             location: str= None,
                             generate_status: ServerStatusDb = None,
@@ -238,7 +238,7 @@ def fetch_server_or_servers(ip: str = None,
     
     resp_servers = db_server.get_servers_by_attrs(db, **prepar_dict)
 
-    return resp_servers
+    return FetchServerResponse(count= len(resp_servers), result= resp_servers)
 
 
 @router.put('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})

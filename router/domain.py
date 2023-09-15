@@ -9,7 +9,7 @@ from schemas import (
     TokenUser,
     DomainRegister,
     DomainRegisterForDb,
-    DomainResponse,
+    FetchDomainResponse,
     UpdateDomainStatus,
     HTTPError,
     DomainStatusDb,
@@ -79,7 +79,7 @@ def add_new_domain(request: DomainRegister, current_user: TokenUser= Depends(get
     return new_domain
 
 
-@router.get('/fetch', response_model= List[DomainResponse], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+@router.get('/fetch', response_model= FetchDomainResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def fetch_domain(domain_id: int = None,
                 server_ip: str= None,
                 domain_name: str = None,
@@ -96,8 +96,7 @@ def fetch_domain(domain_id: int = None,
     
     resp_domains = db_domain.get_domains_by_attrs(db, **prepar_dict)
 
-    print(resp_domains)
-    return resp_domains
+    return FetchDomainResponse(count= len(resp_domains), result= resp_domains) 
 
 
 @router.put('/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})

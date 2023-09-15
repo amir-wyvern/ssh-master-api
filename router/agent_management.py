@@ -11,7 +11,7 @@ from schemas import (
     NewAgentRequest,
     UserRole,
     ChangeAgentStatus,
-    AgentListResponse,
+    FetchAgentListResponse,
     ServiceStatusDb,
     TokenUser,
     ListSubsetResponse,
@@ -142,7 +142,7 @@ def disable_or_enable_agent(request: ChangeAgentStatus, current_user: TokenUser=
     return f'successfully change the {agent.username} agent status to {request.new_status}'
 
 
-@router.get('/list', response_model= List[AgentListResponse])
+@router.get('/list', response_model= FetchAgentListResponse)
 def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     agents = db_user.get_all_users( db)
@@ -205,7 +205,7 @@ def get_list_agents(current_user: TokenUser= Depends(get_admin_user), db: Sessio
 
         ls_resp.append(data)
 
-    return ls_resp
+    return FetchAgentListResponse(count= len(ls_resp), result= ls_resp) 
 
 
 @router.get('/subset/list', response_model= List[ListSubsetResponse],responses={status.HTTP_409_CONFLICT:{'model':HTTPError}, status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
