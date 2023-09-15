@@ -46,6 +46,12 @@ def get_domain_via_server(server: BestServerForNewConfig, db: Session, logger: l
 
         while True:
             new_domain = generate_subdomain(counter= counter)
+            check_domain = db_domain.get_domain_by_name(new_domain, db)
+            if check_domain:
+                counter += 1
+                logger.warning(f'[create new subdomain] domain already exists in database (domain: {new_domain} -server: {server.server_ip})')
+                continue
+            
             resp, err = new_subdomain(server.server_ip, new_domain)
             if err:
                 if err.detail['errors'][0]['code'] == 81057:
