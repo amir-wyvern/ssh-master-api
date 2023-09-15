@@ -603,8 +603,8 @@ class AgentListResponse(BaseModel):
     total_ssh_user: int
     enable_ssh_services: int
     disable_ssh_services: int
-    expired_ssh_servives: int
-    deleted_ssh_servives: int
+    expired_ssh_services: int
+    deleted_ssh_services: int
     referal_link: str
     status: UserStatusDb
 
