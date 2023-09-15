@@ -13,7 +13,7 @@ def check_balance(user: UserFinancial, price: float, db: Session, logger: loggin
      
     resp, err = get_balance(user.user_id)
     if err:
-        logger.error(f'[check balance] failed to get agent balance (agent_id: {user.user_id})')
+        logger.error(f'[check balance] failed to get agent balance (agent_id: {user.user_id} -error: {err.detail})')
         return None, err
     
     balance = resp['balance'] 
