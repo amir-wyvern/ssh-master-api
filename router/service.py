@@ -67,6 +67,8 @@ def get_services_by_search(
         raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'Only admin has access to agent_username field', 'internal_code': 2470})
 
     user_id = current_user.user_id
+    if current_user.role == UserRole.ADMIN:
+        user_id = None 
 
     if agent_username:
         agent = db_user.get_user_by_username(agent_username, db)
@@ -92,8 +94,6 @@ def get_services_by_search(
 
         if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
-
-        user_id = service.agent_id
 
     if plan_id:
         plan = db_ssh_plan.get_plan_by_id(plan_id, db)
