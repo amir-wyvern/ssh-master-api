@@ -133,6 +133,7 @@ def get_services_by_search(
                 'service_type': refrence_service.service_type,
                 'domain_id': refrence_service.domain_id,
                 'domain_name': domain_name_service.domain_name,
+                'server_ip': domain_name_service.server_ip,
                 'ssh_port': service_ip.ssh_port,
                 'plan_id': refrence_service.plan_id,
                 'name': refrence_service.name,

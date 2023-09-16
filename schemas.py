@@ -370,6 +370,7 @@ class UserSShServiceDisplay(BaseModel):
     service_type: ConfigType
     domain_id: int
     domain_name: str
+    server_ip: str
     ssh_port: int
     plan_id: int
     name: Optional[str]
