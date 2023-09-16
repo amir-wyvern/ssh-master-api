@@ -314,7 +314,7 @@ def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_
     return UsersResponse(detail= resp, number_of_users= len(resp))
 
 @router.get('/best', response_model= BestServerForNewConfig, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
-def get_server_users(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def get_best_server(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     selected_server = find_best_server(db)
 
@@ -325,7 +325,7 @@ def get_server_users(current_user: TokenUser= Depends(get_admin_user), db: Sessi
 
 
 @router.get('/active_users', response_model= ActiveUsersResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
-def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def get_active_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     server = db_server.get_server_by_ip(server_ip, db)
 
