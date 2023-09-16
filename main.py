@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from router import (
     agent_management,
     agent_profile,
+    notification,
     financial,
     service,
     domain,
@@ -39,6 +40,7 @@ app.include_router(server.router)
 app.include_router(financial.router)
 app.include_router(service.router)
 app.include_router(auth.router)
+app.include_router(notification.router)
 
 models.Base.metadata.create_all(engine)
 
