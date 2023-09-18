@@ -54,7 +54,7 @@ def new_notif(request: PublishNotification, current_user: TokenUser= Depends(get
     
     if request.accept_agents:
         
-        for username in except_agents:
+        for username in request.accept_agents:
             if user := db_user.get_user_by_username(username, db) and user.status == UserStatusDb.ENABLE and user.chat_id:
                 list_chat_id.append(user.chat_id)
 
