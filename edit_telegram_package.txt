@@ -1,0 +1,6 @@
+# Replace the import of Mapping with collections.abc.Mapping in telegram/vendor/ptb_urllib3/urllib3/util/selectors.py
+from collections.abc import Mapping
+
+
+# Replace the import of Mapping with collections.abc.Mapping in telegram/vendor/ptb_urllib3/urllib3/__collections.py
+from collections.abc import Mapping, MutableMapping
