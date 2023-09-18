@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import logging
 import os
 
-load_dotenv('../.env')
+load_dotenv('.env')
 
 logger = logging.getLogger('notification_service.log')
 logger.setLevel(logging.INFO)
@@ -31,7 +31,7 @@ logger.addHandler(console_handler)
 
 
 vpn_cluster_bot_token = os.getenv('VPN_CLUSTER_BOT_TOKEN')
-vpn_cluster_bot = Bot(vpn_cluster_bot_token)
+vpn_cluster_bot = Bot(token=vpn_cluster_bot_token)
 
 
 class NotificationCeleryTaskImpl(NotificationCeleryTask):
@@ -79,7 +79,7 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
             
             except Exception as e:
                 logger.error(f'[send notif] error (chat_id: {chat_id} -message: {message} -error: {e})')
-                
+
 # create celery app
 app, _ = create_worker_from(NotificationCeleryTaskImpl)
 
