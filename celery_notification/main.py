@@ -36,7 +36,7 @@ vpn_cluster_bot = Bot(token=vpn_cluster_bot_token)
 
 class NotificationCeleryTaskImpl(NotificationCeleryTask):
 
-    def run(self, payload):
+    async def run(self, payload):
         
         logger.info(f'payload: {payload}')
 
@@ -75,7 +75,7 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
 
         if bot_selector == 'vpn_cluster':
             try:
-                vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode)
+                await vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode)
             
             except Exception as e:
                 logger.error(f'[send notif] error (chat_id: {chat_id} -message: {message} -error: {e})')
