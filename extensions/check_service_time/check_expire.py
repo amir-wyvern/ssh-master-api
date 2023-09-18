@@ -92,8 +92,12 @@ def check_expired_users(expired_services: List[DbSshService]):
 
         time_now = datetime.now().replace(tzinfo=pytz.utc)
         service_expire = service.expire.replace(tzinfo=pytz.utc)
-    
-        if time_now - service_expire > timedelta(days= 1):
+
+        day= 1
+        if service.agent_id in [3, 10, 11,12,14]:
+            day = 7
+
+        if time_now - service_expire > timedelta(days= day):
             domain = db_domain.get_domain_by_id(service.domain_id, db)
 
             _ ,err = delete_ssh_account(domain.server_ip, service.username)
