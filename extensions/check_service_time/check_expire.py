@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append('../../')
+sys.path.append('/root/ssh-master-api')
 
 from db import db_ssh_service, db_server, db_domain, db_user
 from db.models import DbSshService
