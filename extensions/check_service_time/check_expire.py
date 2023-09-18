@@ -11,8 +11,7 @@ from celery_tasks.utils import create_worker_from
 from cache.database import get_redis_cache
 from cache.cache_session import get_check_label, set_check_label
 from slave_api.ssh import block_ssh_account, delete_ssh_account
-from schemas import ServiceStatusDb
-from dotenv import load_dotenv
+from schemas import ServiceStatusDb, ConfigType
 from time import sleep
 import pytz
 from typing import List
@@ -51,7 +50,7 @@ def check_active_users(active_services: List[DbSshService]):
         if not get_check_label(service.service_id, cache_db) and service_expire - time_now < timedelta_1:
 
             user = db_user.get_user_by_user_id(service.agent_id, db)
-            if user.chat_id:
+            if user.chat_id and service.service_type == ConfigType.MAIN:
                 payload = {
                     'chat_id': user.chat_id,
                     'message': f'📩 نام کاربری {service.username} فردا منقضی میشه',
@@ -75,7 +74,8 @@ def check_active_users(active_services: List[DbSshService]):
             logger.info(f'[expire] successfully account blocked  [server: {domain.server_ip} -username: {service.username}]')
 
             user = db_user.get_user_by_user_id(service.agent_id, db)
-            if user.chat_id:
+
+            if user.chat_id and service.service_type == ConfigType.MAIN:
                 payload = {
                     'chat_id': user.chat_id,
                     'message': f'📩 نام کاربری `{service.username}` منقضی و دسترسیش مسدود شد',
@@ -97,7 +97,26 @@ def check_expired_users(expired_services: List[DbSshService]):
         if service.agent_id in [3, 10, 11,12,14]:
             day = 7
 
-        if time_now - service_expire > timedelta(days= day):
+        if service.service_type == ConfigType.TEST:
+
+            domain = db_domain.get_domain_by_id(service.domain_id, db)
+
+            _ ,err = delete_ssh_account(domain.server_ip, service.username)
+            if err:
+                logger.error(f'[delete] failed account deleted (server: {domain.server_ip} -username: {service.username} -resp_code: {err.status_code} -detail: {err.detail})')
+                continue
+                
+            try:
+                db_server.decrease_ssh_accounts_number(domain.server_ip, db) 
+                db_ssh_service.change_status(service.service_id, ServiceStatusDb.DELETED, db)
+
+            except Exception as e:
+                logger.error(f'[delete] error in database (username: {service.username} -error: {e})')
+                continue                    
+
+            logger.info(f'[delete] successfully account deleted [server: {domain.server_ip} -username: {service.username}]')
+
+        elif time_now - service_expire > timedelta(days= day):
             domain = db_domain.get_domain_by_id(service.domain_id, db)
 
             _ ,err = delete_ssh_account(domain.server_ip, service.username)
