@@ -48,10 +48,13 @@ def new_notif(request: PublishNotification, current_user: TokenUser= Depends(get
     
     failed_users = []
     list_chat_id = []
-
+    except_agents = request.except_agents
+    if request.except_agents is None:
+        except_agents = []
+    
     if request.accept_agents:
         
-        for username in request.except_agents:
+        for username in except_agents:
             if user := db_user.get_user_by_username(username, db) and user.status == UserStatusDb.ENABLE and user.chat_id:
                 list_chat_id.append(user.chat_id)
 
@@ -66,7 +69,7 @@ def new_notif(request: PublishNotification, current_user: TokenUser= Depends(get
         all_users = db_user.get_all_users(db, status= UserStatusDb.ENABLE)
 
         for user in all_users:
-            if user.username not in request.except_agents:
+            if user.username not in except_agents:
                 if user.chat_id:
                     list_chat_id.append(user.chat_id)
                 
