@@ -6,6 +6,7 @@ from telegram._utils.defaultvalue import DEFAULT_NONE
 from telegram import InlineKeyboardButton, Bot, KeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from celery_tasks.tasks import NotificationCeleryTask 
 from celery_tasks.utils import create_worker_from
+import asyncio
 
 from dotenv import load_dotenv
 import logging
@@ -32,6 +33,11 @@ logger.addHandler(console_handler)
 
 vpn_cluster_bot_token = os.getenv('VPN_CLUSTER_BOT_TOKEN')
 vpn_cluster_bot = Bot(token=vpn_cluster_bot_token)
+
+
+async def send_notif(chat_id, message, keyboards, parse_mode):
+
+    await vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode)
 
 
 class NotificationCeleryTaskImpl(NotificationCeleryTask):
@@ -75,13 +81,15 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
 
         if bot_selector == 'vpn_cluster':
             try:
-                await vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode)
-            
+                asyncio.run(send_notif(chat_id, message, keyboards, parse_mode))    
+
             except Exception as e:
                 logger.error(f'[send notif] error (chat_id: {chat_id} -message: {message} -error: {e})')
 
 # create celery app
 app, _ = create_worker_from(NotificationCeleryTaskImpl)
+
+
 
 
 # start worker
