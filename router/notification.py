@@ -79,11 +79,16 @@ def new_notif(request: PublishNotification, current_user: TokenUser= Depends(get
 
     
     for user_chat_id in list_chat_id:
+        parse_mode = None
+        if request.parse_mode:
+            parse_mode = 'markdown'
+
         payload = {
             'chat_id': user_chat_id,
             'message': request.message,
             'bot_selector': 'vpn_cluster',
-            'inline_keyboard': [['👍 مشاهده کردم', 'notif_click']]
+            'parse_mode': parse_mode,
+            'inline_keyboard': [[['👍 مشاهده کردم', 'notif_click']]]
         }
         notification_worker.apply_async(args=(payload,))
 

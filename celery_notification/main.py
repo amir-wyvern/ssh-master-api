@@ -2,11 +2,9 @@ import sys
 
 sys.path.append('../')
 
-from telegram._utils.defaultvalue import DEFAULT_NONE
 from telegram import InlineKeyboardButton, Bot, KeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from celery_tasks.tasks import NotificationCeleryTask 
 from celery_tasks.utils import create_worker_from
-import asyncio
 
 from dotenv import load_dotenv
 import logging
@@ -17,7 +15,7 @@ load_dotenv('.env')
 logger = logging.getLogger('notification_service.log')
 logger.setLevel(logging.INFO)
 
-# Create a file handler to save logs to a file
+# Create a file handler to save logs to a file 
 file_handler = logging.FileHandler('notification_service.log')
 file_handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
@@ -35,14 +33,9 @@ vpn_cluster_bot_token = os.getenv('VPN_CLUSTER_BOT_TOKEN')
 vpn_cluster_bot = Bot(token=vpn_cluster_bot_token)
 
 
-async def send_notif(chat_id, message, keyboards, parse_mode):
-
-    await vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode)
-
-
 class NotificationCeleryTaskImpl(NotificationCeleryTask):
 
-    async def run(self, payload):
+    def run(self, payload):
         
         logger.info(f'payload: {payload}')
 
@@ -52,7 +45,7 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
         message = payload["message"]
 
         keyboards = None
-        parse_mode= DEFAULT_NONE
+        parse_mode= None
 
         if 'parse_mode' in payload and payload["parse_mode"] in ['html', 'markdown']:
             parse_mode = payload["parse_mode"]
@@ -81,15 +74,13 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
 
         if bot_selector == 'vpn_cluster':
             try:
-                asyncio.run(send_notif(chat_id, message, keyboards, parse_mode))    
-
+                vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode )
+            
             except Exception as e:
                 logger.error(f'[send notif] error (chat_id: {chat_id} -message: {message} -error: {e})')
 
 # create celery app
 app, _ = create_worker_from(NotificationCeleryTaskImpl)
-
-
 
 
 # start worker

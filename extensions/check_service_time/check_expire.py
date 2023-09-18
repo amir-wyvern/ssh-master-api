@@ -56,7 +56,7 @@ def check_active_users(active_services: List[DbSshService]):
                     'chat_id': user.chat_id,
                     'message': f'📩 نام کاربری {service.username} فردا منقضی میشه',
                     'bot_selector': 'vpn_cluster',
-                    'inline_keyboard': [['👍 مشاهده کردم', 'notif_click']],
+                    'inline_keyboard': [[['👍 مشاهده کردم', 'notif_click']]],
                     'parse_mode': 'markdown'
                 }
                 notification_worker.apply_async(args=(payload,))
@@ -80,7 +80,7 @@ def check_active_users(active_services: List[DbSshService]):
                     'chat_id': user.chat_id,
                     'message': f'📩 نام کاربری `{service.username}` منقضی و دسترسیش مسدود شد',
                     'bot_selector': 'vpn_cluster',
-                    'inline_keyboard': [['👍 مشاهده کردم', 'notif_click']],
+                    'inline_keyboard': [[['👍 مشاهده کردم', 'notif_click']]],
                     'parse_mode': 'markdown'
                 }
                 notification_worker.apply_async(args=(payload,))
@@ -121,7 +121,7 @@ def check_expired_users(expired_services: List[DbSshService]):
                     'chat_id': user.chat_id,
                     'message': f'📩 نام کاربری `{service.username}` به  دلیل تمدید نکردن حذف شد',
                     'bot_selector': 'vpn_cluster',
-                    'inline_keyboard': [['👍 مشاهده کردم', 'notif_click']],
+                    'inline_keyboard': [[['👍 مشاهده کردم', 'notif_click']]],
                     'parse_mode': 'markdown'
                 }
                 notification_worker.apply_async(args=(payload,))

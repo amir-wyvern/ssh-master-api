@@ -782,6 +782,7 @@ class NotificationStatus(str, Enum):
 class PublishNotification(BaseModel):
 
     message: str
+    parse_mode: bool = False
     except_agents: Optional[List[str]]
     accept_agents: Optional[List[str]]
 
