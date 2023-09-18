@@ -74,8 +74,12 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
             keyboards = ReplyKeyboardMarkup(inlines)
 
         if bot_selector == 'vpn_cluster':
-            vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode)
-
+            try:
+                vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode)
+            
+            except Exception as e:
+                logger.error(f'[send notif] error (chat_id: {chat_id} -message: {message} -error: {e})')
+                
 # create celery app
 app, _ = create_worker_from(NotificationCeleryTaskImpl)
 
