@@ -66,6 +66,7 @@
 2468= plan_id is not found
 2469= You used both water and wall and these two are not the same
 2470= Only admin has access to agent_username field
+2471= just needed to one keys (new_server_ip or new_domain_name)
 
 # financial
 1003= There was a problem in registering the deposit request
