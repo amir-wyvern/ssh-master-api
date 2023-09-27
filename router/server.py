@@ -306,7 +306,7 @@ def update_server_status(request: UpdateServerStatus, current_user: TokenUser= D
     return f'Server status successfully changed to gen_upd_ser: {request.new_generate_status}_{request.new_update_expire_status}_{request.new_status}'
 
 
-@router.get('/nodes/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+@router.get('/nodes/status', response_model= NodesStatusResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
 def get_nodes_status( current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     servers = db_server.get_all_server(db)
@@ -319,7 +319,7 @@ def get_nodes_status( current_user: TokenUser= Depends(get_admin_user), db: Sess
         
         else:
             response.append( NodesStatusDetail(ip= server.server_ip, status= server.status, connection= ServerConnection.CONNECTED) )
-
+    
     return NodesStatusResponse(count= len(servers), detail= response)
 
 
@@ -350,7 +350,7 @@ def get_best_server(current_user: TokenUser= Depends(get_admin_user), db: Sessio
     return selected_server
 
 
-@router.get('/active_users', response_model= List[ActiveUsersResponse], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
+@router.get('/active_users', response_model= ActiveUsersResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
 def get_active_users(server_ip: str= Query(None) ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     if server_ip:
