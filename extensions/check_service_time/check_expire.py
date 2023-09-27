@@ -53,7 +53,7 @@ def check_active_users(active_services: List[DbSshService]):
             if user.chat_id and service.service_type == ConfigType.MAIN:
                 payload = {
                     'chat_id': user.chat_id,
-                    'message': f'📩 نام کاربری {service.username} فردا منقضی میشه',
+                    'message': f'📩 نام کاربری `{service.username}` فردا منقضی میشه',
                     'bot_selector': 'vpn_cluster',
                     'inline_keyboard': [[['👍 مشاهده کردم', 'notif_click']]],
                     'parse_mode': 'markdown'
