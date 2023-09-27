@@ -9,7 +9,7 @@ import numpy as np
 
 def find_best_server(db: Session, std_dev: int= 1, except_domain_id: int = None) -> BestServerForNewConfig:
 
-    servers = db_server.get_all_server(generate_status= ServerStatusDb.ENABLE, db= db)
+    servers = db_server.get_all_server(generate_status= ServerStatusDb.ENABLE, status= ServerStatusDb.ENABLE, db= db)
     
     if servers == []:
         return None
