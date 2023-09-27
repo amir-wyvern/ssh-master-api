@@ -143,6 +143,11 @@ class ServerCaps(BaseModel):
     server_ip: str
     new_caps: int
 
+class NewServerResponse(BaseModel):
+
+    server_ip: str
+    domain_name: str
+
 class NewServer(BaseModel):
 
     server_ip : str
@@ -187,6 +192,22 @@ class UpdateNodesResponse(BaseModel):
     message: str
     errors : List[Dict[str,str]]
 
+class ServerTransfer(BaseModel):
+
+    old_server_ip: str
+    new_server_ip: str
+    disable_old_server: bool
+    delete_old_users: bool
+
+class ServerTransferResponse(BaseModel):
+
+    from_server: str
+    to_server: str
+    domains_updated: List[str]
+    success_users: List[str]
+    create_exists_users: List[str]
+    block_not_exists_users: List[str]
+    delete_not_exists_users: List[str]
 
 
 # ============= Domain =============
@@ -331,18 +352,18 @@ class SshService(BaseModel):
     expire: datetime
     created: datetime
 
-class UsersTransfer(BaseModel):
+class DomainTransfer(BaseModel):
 
     old_domain_name: str
-    new_domain_name: str
+    new_domain_name: Optional[str]
+    new_server_ip: Optional[str]
     disable_old_domain: bool
-    disable_old_server: bool
     delete_old_users: bool
 
-class UsersTransferResponse(BaseModel):
+class DomainTransferResponse(BaseModel):
 
     old_domain_name: str
-    new_domain_name: str
+    new_domain_name: Optional[str]
     from_server: str
     to_server: str
     success_users: List[str]

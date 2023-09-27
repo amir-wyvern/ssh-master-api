@@ -18,10 +18,14 @@ from schemas import (
     DomainStatusDb,
     UsersResponse,
     BestServerForNewConfig,
-    UpdateNodesResponse
+    UpdateNodesResponse,
+    ServerTransfer,
+    NewServerResponse,
+    ServerTransferResponse,
+    ServiceStatusDb
 )
 from db.database import get_db
-from db import db_server, db_domain
+from db import db_server, db_domain, db_ssh_service
 
 from utils.server import find_best_server
 from slave_api.server import get_users, init_server, active_users
@@ -29,8 +33,10 @@ from auth.auth import get_admin_user
 import paramiko
 from paramiko import AuthenticationException
 
+from cloudflare_api.subdomain import update_subdomain
+from utils.domain import register_domain_in_cloudflare
+from slave_api.ssh import create_ssh_account_via_group, block_ssh_account_via_groups, delete_ssh_account_via_group
 from time import sleep
-from typing import List, Dict
 import logging
 import os   
 
@@ -53,8 +59,8 @@ logger.addHandler(console_handler)
 router = APIRouter(prefix='/server', tags=['Server'])
 
 
-@router.post('/new', responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
-def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus.ENABLE , current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+@router.post('/new', response_model= NewServerResponse,responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
+def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus.ENABLE, create_domain: DeployStatus = DeployStatus.DISABLE , current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
     server = db_server.get_server_by_ip(request.server_ip, db) 
     
@@ -89,27 +95,27 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             
             for command in commands:
 
-                logging.info(f'[new server] excuting command (server_ip: {request.server_ip} -command: "{command}")')
+                logger.info(f'[new server] excuting command (server_ip: {request.server_ip} -command: "{command}")')
 
                 stdin, stdout, stderr = ssh_client.exec_command(command)
                 exit_status = stdout.channel.recv_exit_status()
 
                 if exit_status == 0:
-                    logging.info(f"[new server] Command executed successfully (server_ip: {request.server_ip} )")
+                    logger.info(f"[new server] Command executed successfully (server_ip: {request.server_ip} )")
 
                 else:
                     error_command = stderr.read().decode('utf-8')
-                    logging.error(f'[new server] Error executing the command (server_ip: {request.server_ip} -command: {command} -error: {error_command})')
+                    logger.error(f'[new server] Error executing the command (server_ip: {request.server_ip} -command: {command} -error: {error_command})')
                     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
 
             ssh_client.close()
 
         except AuthenticationException as e:
-            logging.error(f"[new server] An error AuthenticationException (server_ip: {request.server_ip} -error: {e})")
+            logger.error(f"[new server] An error AuthenticationException (server_ip: {request.server_ip} -error: {e})")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message': 'Authentication Failed', 'internal_code': 2438})
         
         except Exception as e:
-            logging.error(f"[new server] An error occurred (server_ip: {request.server_ip} -error: {e})")
+            logger.error(f"[new server] An error occurred (server_ip: {request.server_ip} -error: {e})")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
         
         for _ in range(30):
@@ -121,15 +127,22 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
 
             _, err = init_server(request.server_ip, request.ssh_port, request.manager_password)
             if err:
-                logging.error(f"[new server] error in init server (server_ip: {request.server_ip} -resp_code: {err.status_code} -error: {err.detail})")
+                logger.error(f"[new server] error in init server (server_ip: {request.server_ip} -resp_code: {err.status_code} -error: {err.detail})")
                 raise HTTPException(status_code=err.status_code, detail={'message': f'error in init server [{err.detail}]', 'internal_code': 2439})
 
             break
 
     server = db_server.create_server(request, db)
     logger.info(f'[new server] successfully saved in database (server_ip: {request.server_ip})')
+    
+    new_domain = None
+    if create_domain == DeployStatus.ENABLE:
+        domain, err = register_domain_in_cloudflare(request.server_ip, db, logger)
+        if err:
+            raise err
+        new_domain = domain.domain_name
 
-    return 'Server successfully created'
+    return NewServerResponse(sever_ip= request.server_ip, domain_name= new_domain)
 
 @router.get('/nodes/update', response_model= UpdateNodesResponse , responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
@@ -226,7 +239,6 @@ def fetch_server_or_servers(ip: str = None,
                             update_expire_status: ServerStatusDb = None,
                             status_: ServerStatusDb = None,
                             current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
-
     args_dict = {
         'server_ip': ip,
         'location': location,
@@ -252,15 +264,6 @@ def update_server_status(request: UpdateServerStatus, current_user: TokenUser= D
     if request.new_generate_status is None and request.new_update_expire_status is None and request.new_status is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2446, 'message':'there is no change status'})
 
-    if request.new_status and server.status == request.new_status:
-        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'server already has this status', 'internal_code': 2431})
-    
-    if request.new_generate_status and server.generate_status == request.new_generate_status:
-        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'server already has this generate status', 'internal_code': 2444})
-    
-    if request.new_update_expire_status and server.update_expire_status == request.new_update_expire_status:
-        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': 'server already has this update expire status', 'internal_code': 2445})
-
     if request.new_generate_status:
         if server.status == ServerStatusDb.DISABLE:
             raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': f'The Server [{request.server_ip}] has disable', 'internal_code': 2427})
@@ -275,7 +278,7 @@ def update_server_status(request: UpdateServerStatus, current_user: TokenUser= D
 
     try:
         if request.new_status:
-            if request.new_status == ServerStatusDb.DISABLE:
+            if request.new_status == ServerStatusDb.DISABLE: 
                 domains = db_domain.get_domains_by_server_ip(request.server_ip, db, DomainStatusDb.ENABLE)
 
                 for domain in domains:
@@ -284,8 +287,7 @@ def update_server_status(request: UpdateServerStatus, current_user: TokenUser= D
                 db_server.change_generate_status(request.server_ip, ServerStatusDb.DISABLE, db, commit= False)
                 db_server.change_update_expire_status(request.server_ip, ServerStatusDb.DISABLE, db, commit= False)
 
-            db_server.change_server_status(request.server_ip, request.new_status, db, commit= False)
-    
+            db_server.change_server_status(request.server_ip, request.new_status, db, commit= False)    
             db.commit()
         
     except Exception as e:
@@ -312,6 +314,7 @@ def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_
         raise err
     
     return UsersResponse(detail= resp, number_of_users= len(resp))
+
 
 @router.get('/best', response_model= BestServerForNewConfig, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
 def get_best_server(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
@@ -354,3 +357,111 @@ def update_server_max_users(request: UpdateMaxUserServer ,current_user: TokenUse
     logger.info(f'[change max user] successfully (server_ip: {request.server_ip} -new_max_users: {request.new_max_user})')
 
     return 'Server max_user successfully updated!'
+
+
+@router.post('/transfer', response_model= ServerTransferResponse, responses={
+    status.HTTP_404_NOT_FOUND:{'model': HTTPError},
+    status.HTTP_500_INTERNAL_SERVER_ERROR:{'model': HTTPError},
+    status.HTTP_408_REQUEST_TIMEOUT:{'model': HTTPError},
+    status.HTTP_409_CONFLICT:{'model':HTTPError}})
+def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+
+    old_server = db_server.get_server_by_ip(request.old_server_ip, db)
+    if old_server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'old server not exists', 'internal_code':2406})
+    
+    new_server = db_server.get_server_by_ip(request.new_server_ip, db)
+    if new_server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'new server not exists', 'internal_code':2406})
+
+    old_server_domains = db_domain.get_domains_by_server_ip(request.old_server_ip, db)
+    
+    enable_old_users = []
+    disable_old_users = []
+    expired_old_users = []
+
+    for domain in old_server_domains:
+
+        enable_tmp_users = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.ENABLE)
+        disable_tmp_users = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.DISABLE)
+        expired_tmp_users = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.EXPIRED)
+
+        enable_old_users.extend(enable_tmp_users)
+        disable_old_users.extend(disable_tmp_users)
+        expired_old_users.extend(expired_tmp_users)
+
+
+    listed_enable_old_users = [{'username': user.username, 'password': user.password} for user in enable_old_users]
+    listed_disable_old_users = [{'username': user.username, 'password': user.password} for user in disable_old_users]
+    listed_expired_old_users = [{'username': user.username, 'password': user.password} for user in expired_old_users]
+
+    listed_new_users = listed_enable_old_users + listed_disable_old_users + listed_expired_old_users
+    listed_blocked_users = listed_disable_old_users + listed_expired_old_users
+
+    resp_create, err = create_ssh_account_via_group(request.new_server_ip, listed_new_users, ignore_exists_users= True)
+    if err:
+        logger.error(f'[transfer users] (create) ssh group account failed (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp_code: {err.status_code} -content: {err.detail})')
+        raise err
+    
+    success_users = resp_create['success_users'] 
+    
+    logger.info(f'[transfer users] (create) ssh group account was successfully (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp: {resp_create})')
+
+    resp_block = {'not_exists_users': []}
+    if listed_blocked_users:
+        listed_old_users_for_blocking = [user['username'] for user in listed_disable_old_users]
+        resp_block, err = block_ssh_account_via_groups(request.new_server_ip, listed_old_users_for_blocking, ignore_exists_users= True)
+        if err:
+            logger.error(f'[transfer users] (block) ssh group account failed (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp_code: {err.status_code} -content: {err.detail})')
+            db.rollback()
+            raise err
+
+        logger.info(f'[transfer users] (block) ssh group account was created successfully (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp: {resp_block})')
+        success_users = list( set(success_users) & set(resp_block['success_users'])) 
+
+    resp_del = {'not_exists_users': []}
+    if request.delete_old_users: 
+        listed_new_users_for_delete = [user['username'] for user in listed_new_users]
+        resp_del, err = delete_ssh_account_via_group(request.old_server_ip, listed_new_users_for_delete, ignore_not_exists_users= True)
+        if err:
+            logger.error(f'[transfer users] (delete) ssh group account failed (resp_code: {err.status_code} -content: {err.detail})')
+            db.rollback()
+            raise err
+
+        logger.info(f'[transfer users] (delete) ssh group account was successfully (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp: {resp_del})')
+        success_users = list( set(success_users) & set(resp_del['success_users'])) 
+
+
+    for index, domain in enumerate(old_server_domains):
+        _, err = update_subdomain(domain.identifier, request.new_server_ip, db)
+        if err:
+            not_updated_domains = [i.domain_name for i in old_server_domains[index:]]
+            logger.error(f'[transfer server] (domain) failed to update cloudflare records (domain: {domain.domain_name} -new_server: {request.new_server_ip} -not_updated_domains: {not_updated_domains} -err_code: {err.status_code} -err_resp: {err.detail})')
+            raise err
+
+        db_domain.update_server_ip(domain.domain_id, request.new_server_ip, db)
+        logger.info(f'[transfer server] (domain) successfully updated domain (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -domain: {domain.domain_name})')
+    
+    
+    if request.delete_old_users:
+        db_server.decrease_ssh_accounts_number(request.old_server_ip, db, number= len(set(resp_del['success_users']))) 
+    
+    if request.disable_old_server:
+        db_domain.change_status(request.old_server_ip, ServerStatusDb.DISABLE, db)
+
+    db_server.increase_ssh_accounts_number(request.new_server_ip, db, number= len(resp_create['success_users']) )
+
+    domains = [domain.domain_name for domain in old_server_domains]
+    logger.info(f'[transfer server] successfully transfer server (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -updated_domains: {domains})')
+
+    return ServerTransferResponse(
+        from_server= request.old_server_ip,
+        to_server= request.new_server_ip,
+        success_users= success_users,
+        domains_updated= domains,
+        create_exists_users= resp_create['exists_users'],
+        block_not_exists_users= resp_block['not_exists_users'],
+        delete_not_exists_users= resp_del['not_exists_users']
+    )
+
+
