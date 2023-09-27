@@ -2,6 +2,7 @@ from fastapi import (
     APIRouter,
     Depends,
     status,
+    Query,
     HTTPException
 )
 from sqlalchemy.orm.session import Session
@@ -22,7 +23,11 @@ from schemas import (
     ServerTransfer,
     NewServerResponse,
     ServerTransferResponse,
-    ServiceStatusDb
+    NodesStatusDetail,
+    ServerConnection,
+    ServiceStatusDb,
+    ActiveUsersDetail,
+    NodesStatusResponse
 )
 from db.database import get_db
 from db import db_server, db_domain, db_ssh_service
@@ -36,6 +41,7 @@ from paramiko import AuthenticationException
 from cloudflare_api.subdomain import update_subdomain
 from utils.domain import register_domain_in_cloudflare
 from slave_api.ssh import create_ssh_account_via_group, block_ssh_account_via_groups, delete_ssh_account_via_group
+from typing import List
 from time import sleep
 import logging
 import os   
@@ -300,6 +306,23 @@ def update_server_status(request: UpdateServerStatus, current_user: TokenUser= D
     return f'Server status successfully changed to gen_upd_ser: {request.new_generate_status}_{request.new_update_expire_status}_{request.new_status}'
 
 
+@router.get('/nodes/status', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+def get_nodes_status( current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+
+    servers = db_server.get_all_server(db)
+
+    response = []
+    for server in servers:
+        _, err = active_users(server.server_ip)
+        if err:
+            response.append( NodesStatusDetail(ip= server.server_ip, status= server.status, connection= ServerConnection.DISCONNECT) )
+        
+        else:
+            response.append( NodesStatusDetail(ip= server.server_ip, status= server.status, connection= ServerConnection.CONNECTED) )
+
+    return NodesStatusResponse(count= len(servers), detail= response)
+
+
 @router.get('/users', response_model= UsersResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
 def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
@@ -327,22 +350,54 @@ def get_best_server(current_user: TokenUser= Depends(get_admin_user), db: Sessio
     return selected_server
 
 
-@router.get('/active_users', response_model= ActiveUsersResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
-def get_active_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+@router.get('/active_users', response_model= List[ActiveUsersResponse], responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
+def get_active_users(server_ip: str= Query(None) ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-    server = db_server.get_server_by_ip(server_ip, db)
+    if server_ip:
 
-    if server is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
-    
-    resp, err = active_users(server_ip)
-    if err:
-        logger.error(f'[active users] error (server_ip: {server_ip}) -detail: {err.detail})')
-        raise err
+        server = db_server.get_server_by_ip(server_ip, db)
 
-    number_active_users = len(resp)
-    number_active_sessions = sum([item['count'] for item in resp])
-    return ActiveUsersResponse(detail= resp, active_users= number_active_users, active_sessions= number_active_sessions)
+        if server is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
+        
+        resp, err = active_users(server_ip)
+        if err:
+            logger.error(f'[active users] error (server_ip: {server_ip}) -detail: {err.detail})')
+            raise err
+
+        number_active_users = len(resp)
+        number_active_sessions = sum([item['count'] for item in resp])
+
+        server_detail = ActiveUsersDetail(detail= resp, active_users= number_active_users, active_sessions= number_active_sessions)
+
+        return ActiveUsersResponse(total_active_users= number_active_users, total_sessions= number_active_sessions, detail= server_detail)
+
+    else:
+
+        servers = db_server.get_all_server(db, status= ServerStatusDb.ENABLE)
+
+        response = []
+        total_active_users= 0
+        total_sessions= 0
+        for server in servers:
+            resp, err = active_users(server.server_ip)
+            if err:
+                resp = []
+                logger.error(f'[active users] error (server_ip: {server.server_ip}) -detail: {err.detail})')
+
+            number_active_users = len(resp)
+            number_active_sessions = sum([item['count'] for item in resp])
+
+            total_active_users += number_active_users
+            total_sessions += number_active_sessions
+
+            response.append(ActiveUsersDetail(
+                detail= resp,
+                active_users= number_active_users,
+                active_sessions= number_active_sessions
+            ))
+
+        return ActiveUsersResponse(server_number= len(servers), total_active_users= total_active_users, total_sessions= total_sessions, detail= response)
 
 
 @router.put('/max_users', response_model= str, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
@@ -433,7 +488,7 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
 
 
     for index, domain in enumerate(old_server_domains):
-        _, err = update_subdomain(domain.identifier, request.new_server_ip, db)
+        _, err = update_subdomain(domain.identifier, request.new_server_ip, domain.domain_name)
         if err:
             not_updated_domains = [i.domain_name for i in old_server_domains[index:]]
             logger.error(f'[transfer server] (domain) failed to update cloudflare records (domain: {domain.domain_name} -new_server: {request.new_server_ip} -not_updated_domains: {not_updated_domains} -err_code: {err.status_code} -err_resp: {err.detail})')

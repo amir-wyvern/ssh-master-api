@@ -115,6 +115,22 @@ class UpdateServerStatus(BaseModel):
     new_update_expire_status: Optional[ServerStatusDb]    
     new_status: Optional[ServerStatusDb]    
 
+class ServerConnection(Enum, str):
+
+    CONNECTED= 'connected'
+    DISCONNECT= 'disconnect'
+
+class NodesStatusDetail(BaseModel):
+
+    ip: str
+    status: ServerStatusDb
+    connection: ServerConnection
+
+class NodesStatusResponse(BaseModel):
+
+    count: int
+    detail: List[NodesStatusDetail]
+
 class BestServerForNewConfig(BaseModel):
 
     server_ip: str
@@ -132,12 +148,19 @@ class UpdateMaxUserServer(BaseModel):
     server_ip: str
     new_max_user: int = Field(gt=0)
 
-class ActiveUsersResponse(BaseModel):
+class ActiveUsersDetail(BaseModel):
 
     detail: List[Dict]
     active_sessions: int
     active_users: int
+    
+class ActiveUsersResponse(BaseModel):
 
+    server_number: int
+    total_active_users: int
+    total_sessions: int
+    detail: List[ActiveUsersDetail]
+    
 class ServerCaps(BaseModel):
 
     server_ip: str
