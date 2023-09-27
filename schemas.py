@@ -115,7 +115,7 @@ class UpdateServerStatus(BaseModel):
     new_update_expire_status: Optional[ServerStatusDb]    
     new_status: Optional[ServerStatusDb]    
 
-class ServerConnection(Enum, str):
+class ServerConnection(str, Enum):
 
     CONNECTED= 'connected'
     DISCONNECT= 'disconnect'
