@@ -137,10 +137,10 @@ def update_max_user(server_ip, new_caps, db: Session):
     return server
 
 
-def increase_ssh_accounts_number(server_ip, db: Session, commit= True):
+def increase_ssh_accounts_number(server_ip, db: Session, commit= True, number= 1):
 
     server = db.query(DbServer).filter(DbServer.server_ip == server_ip )
-    server.update({DbServer.ssh_accounts_number: server.first().ssh_accounts_number + 1})
+    server.update({DbServer.ssh_accounts_number: server.first().ssh_accounts_number + number})
     
     if commit:
         db.commit()
@@ -148,12 +148,12 @@ def increase_ssh_accounts_number(server_ip, db: Session, commit= True):
     return server
 
 
-def decrease_ssh_accounts_number(server_ip, db: Session, commit= True):
+def decrease_ssh_accounts_number(server_ip, db: Session, commit= True, number= 1):
 
     server = db.query(DbServer).filter(DbServer.server_ip == server_ip )
 
     if server.first().ssh_accounts_number > 0 :
-        server.update({DbServer.ssh_accounts_number: server.first().ssh_accounts_number - 1})
+        server.update({DbServer.ssh_accounts_number: server.first().ssh_accounts_number - number})
         if commit:
             db.commit()
 
