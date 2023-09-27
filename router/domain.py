@@ -176,13 +176,14 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
     if old_domain is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'old domain is not exists', 'internal_code':2454})
     
-    if old_domain.server_ip == new_domain.server_ip:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message': 'new domain and old domain have same server', 'internal_code':2458})
 
     dest = None
     new_ip = None
     if request.new_domain_name:
         new_domain = db_domain.get_domain_by_name(request.new_domain_name, db)
+        
+        if  old_domain.server_ip == new_domain.server_ip:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message': 'new domain and old domain have same server', 'internal_code':2458})
         
         if new_domain.status == DomainStatusDb.DISABLE:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'new domain is disable ', 'internal_code':2451})
@@ -245,20 +246,20 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
         success_users = list( set(success_users) & set(resp_del['success_users'])) 
 
     if request.new_server_ip:
-
-        _, err = update_subdomain(old_domain.identifier, request.new_server_ip, db)
+        
+        _, err = update_subdomain(old_domain.identifier, request.new_server_ip, old_domain.domain_name.split('.')[0])
         if err:
             logger.error(f'[transfer domain] (domain) failed to update cloudflare records (domain: {old_domain.domain_name} -new_server: {request.new_server_ip} -err_code: {err.status_code} -err_resp: {err.detail})')
             raise err
 
-        db_domain.update_server_ip(old_domain.domain_id, request.new_server_ip, db)
+        db_domain.update_server_ip(old_domain.domain_id, request.new_server_ip, db, commit= False)
         logger.info(f'[transfer domain] (domain) successfully updated domain (domain: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_server_ip: {request.new_server_ip} )')
         
         if request.delete_old_users:
-            db_server.decrease_ssh_accounts_number(old_domain.server_ip, db, number= len(set(resp_del['success_users']))) 
+            db_server.decrease_ssh_accounts_number(old_domain.server_ip, db, number= len(set(resp_del['success_users'])), commit= False) 
         
-        db_server.increase_ssh_accounts_number(request.new_server_ip, db, number= len(resp_create['success_users']) )
-        
+        db_server.increase_ssh_accounts_number(request.new_server_ip, db, number= len(resp_create['success_users']) ,commit= False)
+
         resp = DomainTransferResponse(
             old_domain_name= old_domain.domain_name,
             from_server= old_domain.server_ip,
@@ -269,6 +270,7 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
             delete_not_exists_users= resp_del['not_exists_users']
         )
     
+        db.commit()
 
     elif request.new_domain_name:
 
