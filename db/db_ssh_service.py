@@ -193,9 +193,9 @@ def get_services_by_range_time(start_time: datetime, end_time: datetime, db: Ses
     return db.query(DbSshService).filter(and_(*args)).all()
 
 
-def transfer_users_by_domain(old_domain_id, new_domain_id, db, commit= True):
+def transfer_users_by_domain(old_domain_id, new_domain_id, db, commit= True, not_status: ServiceStatusDb= None):
 
-    services = db.query(DbSshService).filter(DbSshService.domain_id == old_domain_id )
+    services = db.query(DbSshService).filter(and_(DbSshService.domain_id == old_domain_id, DbSshService.status != not_status))
 
     services.update({DbSshService.domain_id: new_domain_id})
     
