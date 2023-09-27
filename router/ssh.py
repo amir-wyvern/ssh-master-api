@@ -18,13 +18,12 @@ from schemas import (
     HTTPError, 
     PlanStatusDb,
     ServiceStatusDb,
+    ServerStatusDb,
     DomainStatusDb,
     UserFinancial,
     RenewSsh,
     TokenUser,
     ConfigType,
-    UsersTransfer,
-    UsersTransferResponse
 )
 from db import (
     db_server,
@@ -39,7 +38,7 @@ import pytz
 from cache.cache_session import set_test_account_cache, get_test_account_number
 from cache.database import get_redis_cache
 from db.database import get_db
-from auth.auth import get_agent_user, get_admin_user
+from auth.auth import get_agent_user
 
 from random import randint
 from datetime import datetime, timedelta
@@ -47,10 +46,7 @@ from slave_api.ssh import (
     create_ssh_account,
     delete_ssh_account,
     block_ssh_account,
-    unblock_ssh_account,
-    create_ssh_account_via_group,
-    block_ssh_account_via_groups,
-    delete_ssh_account_via_group
+    unblock_ssh_account
 )
 
 from utils.password import generate_password
@@ -351,8 +347,11 @@ def update_ssh_account_expire(request: UpdateSshExpire, current_user: TokenUser=
     
     server = db_server.get_server_by_ip(domain.server_ip, db)
 
-    if server.update_expire_status == ServiceStatusDb.DISABLE:
+    if server.update_expire_status == ServerStatusDb.DISABLE:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message': f'The Server [{server.server_ip}] has disable (update expire status)', 'internal_code': 2453})
+    
+    if server.status == ServerStatusDb.DISABLE:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message': f'The Server [{server.server_ip}] has disable (main status)', 'internal_code': 2453})
 
     request_new_expire = request.new_expire.replace(tzinfo=pytz.utc)
     service_expire = service.expire.replace(tzinfo=pytz.utc)
@@ -559,7 +558,7 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'new domain is same with old domain', 'internal_code': 2467})
         
         selected_domain = domain
-        selected_server, err = get_server_via_domain(domain.domain_id, db, logger)
+        selected_server, err = get_server_via_domain(domain.domain_id, db)
         if err:
             raise err
 
@@ -584,7 +583,7 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     
     logger.info(f'[renew] ssh account successfully created (agent: {current_user.user_id} -username: {service.username} -new_domain: {selected_domain.domain_name} -new_server: {selected_server.server_ip})')
     
-    if service.status == ServiceStatusDb.DISABLE:
+    if service.status == ServiceStatusDb.DISABLE or service.status == ServiceStatusDb.EXPIRED:
         _, err = block_ssh_account(selected_server.server_ip, service.username)
         if err:
             logger.error(f'[renew] ssh block account failed (agent: {current_user.user_id} -username: {service.username} -new_domain: {selected_domain.domain_name} -new_server: {selected_server.server_ip} -resp_code: {err.status_code} -detail: {err.detail})')
@@ -620,84 +619,3 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     logger.info(f'[renew] renew config successfully Done (-username: {service.username} -old_domain: {old_domain.domain_name} -new_domain: {selected_domain.domain_name} -old_server: {old_domain.server_ip} -new_server: {selected_server.server_ip}')
     return NewSshResponse(**response_message)
 
-
-@router.post('/transfer', response_model= UsersTransferResponse, responses={
-    status.HTTP_404_NOT_FOUND:{'model': HTTPError},
-    status.HTTP_500_INTERNAL_SERVER_ERROR:{'model': HTTPError},
-    status.HTTP_408_REQUEST_TIMEOUT:{'model': HTTPError},
-    status.HTTP_409_CONFLICT:{'model':HTTPError}})
-def transfer_configs(request: UsersTransfer, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
-
-
-    old_domain = db_domain.get_domain_by_name(request.old_domain_name, db)
-    new_domain = db_domain.get_domain_by_name(request.new_domain_name, db)
-
-    if old_domain is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'old domain is not exists', 'internal_code':2454})
-    
-    if new_domain is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'new domain is not exists', 'internal_code':2455})
-    
-    if new_domain.status == DomainStatusDb.DISABLE:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'new domain is disable ', 'internal_code':2451})
-    
-    if old_domain.server_ip == new_domain.server_ip:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message': 'new domain and old domain have same server', 'internal_code':2458})
-
-    enable_old_users = db_ssh_service.get_services_by_domain_id(old_domain.domain_id, db, status= ServiceStatusDb.ENABLE)
-    disable_old_users = db_ssh_service.get_services_by_domain_id(old_domain.domain_id, db, status= ServiceStatusDb.DISABLE)
-
-    listed_enable_old_users = [{'username': user.username, 'password': user.password} for user in enable_old_users]
-    listed_disable_old_users = [{'username': user.username, 'password': user.password} for user in disable_old_users]
-
-    listed_new_users = listed_enable_old_users + listed_disable_old_users
-
-    resp_create, err = create_ssh_account_via_group(new_domain.server_ip, listed_new_users, ignore_exists_users= True)
-
-    if err:
-        logger.error(f'[transfer users] (create) ssh group account failed (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_domain_name: {new_domain.domain_name} -to_server_ip: {new_domain.server_ip} -resp_code: {err.status_code} -content: {err.detail})')
-        db.rollback()
-        raise err
-    
-    success_users = resp_create['success_users'] 
-    
-    logger.info(f'[transfer users] (create) ssh group account was successfully (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_domain_name: {new_domain.domain_name} -to_server_ip: {new_domain.server_ip} -resp: {resp_create})')
-
-    resp_block = {'not_exists_users': []}
-    if listed_disable_old_users:
-        listed_disable_old_users_for_blocking = [user['username'] for user in listed_disable_old_users]
-        resp_block, err = block_ssh_account_via_groups(new_domain.server_ip, listed_disable_old_users_for_blocking, ignore_exists_users= True)
-        if err:
-            logger.error(f'[transfer users] (block) ssh group account failed (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_domain_name: {new_domain.domain_name} -to_server_ip: {new_domain.server_ip} -resp_code: {err.status_code} -content: {err.detail})')
-            db.rollback()
-            raise err
-
-        logger.info(f'[transfer users] (block) ssh group account was created successfully (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_domain_name: {new_domain.domain_name} -to_server_ip: {new_domain.server_ip} -resp: {resp_block})')
-        success_users = list( set(success_users) & set(resp_block['success_users'])) 
-
-    resp_del = {'not_exists_users': []}
-    if request.delete_old_users: 
-        listed_new_users_for_delete = [user['username'] for user in listed_new_users]
-        resp_del, err = delete_ssh_account_via_group(old_domain.server_ip, listed_new_users_for_delete, ignore_not_exists_users= True)
-        if err:
-            logger.error(f'[transfer users] (delete) ssh group account failed (resp_code: {err.status_code} -content: {err.detail})')
-            db.rollback()
-            raise err
-
-        logger.info(f'[transfer users] (delete) ssh group account was successfully (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_domain_name: {new_domain.domain_name} -to_server_ip: {new_domain.server_ip} -resp: {resp_del})')
-        success_users = list( set(success_users) & set(resp_del['success_users'])) 
-
-    db_ssh_service.transfer_users_by_domain(old_domain.domain_id, new_domain.domain_id, db)
-    
-    logger.info(f'[transfer users] successfully transfer users (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_domain_name: {new_domain.domain_name} -to_server_ip: {new_domain.server_ip})')
-
-    return UsersTransferResponse(
-        old_domain_name= old_domain.domain_name,
-        new_domain_name= new_domain.domain_name,
-        from_server= old_domain.server_ip,
-        to_server= new_domain.server_ip,
-        success_users= success_users,
-        create_exists_users= resp_create['exists_users'],
-        block_not_exists_users= resp_block['not_exists_users'],
-        delete_not_exists_users= resp_del['not_exists_users']
-    )
