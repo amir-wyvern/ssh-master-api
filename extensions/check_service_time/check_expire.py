@@ -94,7 +94,7 @@ def check_expired_users(expired_services: List[DbSshService]):
         service_expire = service.expire.replace(tzinfo=pytz.utc)
 
         day= 2
-        if service.agent_id in [1, 3, 10, 11,12,14]:
+        if service.agent_id in [1, 3, 10, 11,12,14,21]:
             day = 7
 
         if service.service_type == ConfigType.TEST:
