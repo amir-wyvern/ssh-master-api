@@ -53,6 +53,7 @@ from utils.password import generate_password
 from utils.server import find_best_server
 from utils.domain import get_domain_via_server, get_server_via_domain
 from utils.financial import check_balance
+from utils.server import find_server_and_domain
 from financial_api.transfer import transfer 
 import logging
 import os
@@ -116,15 +117,11 @@ def create_test_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(
             raise err
         
     else:
-        
-        selected_server = find_best_server(db)
-        if selected_server is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2450, 'message':'There is no server for new config'})
-        
-        selected_domain, err = get_domain_via_server(selected_server, db, logger)
+
+        selected_server, selected_domain, err = find_server_and_domain(db, logger)
         if err:
             raise err
-
+        
     password = generate_password()
     while True:
 
@@ -136,6 +133,7 @@ def create_test_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(
     if err:
         logger.error(f'[new test ssh] ssh account creation failed (agent: {current_user.user_id} -server_ip: {selected_server.server_ip} -domain: {selected_domain.domain_name} -plan_id: {plan.plan_id} -resp_code: {err.status_code} -error: {err.detail})')
         raise err
+    logger.info(f'[-new test ssh] successfully ssh account creation (agent: {current_user.user_id} -server_ip: {selected_server.server_ip} -domain: {selected_domain.domain_name} -plan_id: {plan.plan_id})')
 
 
     service_data = {
@@ -217,11 +215,7 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
         
     else:
         
-        selected_server = find_best_server(db)
-        if selected_server is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2450, 'message':'There is no server for new config'})
-        
-        selected_domain, err = get_domain_via_server(selected_server, db, logger)
+        selected_server, selected_domain, err = find_server_and_domain(db, logger)
         if err:
             raise err
 
@@ -245,6 +239,7 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
     if err:
         logger.error(f'[new ssh] ssh account creation failed (agent: {current_user.user_id} -server_ip: {selected_server.server_ip} -domain: {selected_domain.domain_name} -plan_id: {plan.plan_id} -resp_code: {err.status_code} -error: {err.detail})')
         raise err
+    logger.info(f'[-new ssh] successfully ssh account creation (agent: {current_user.user_id} -server_ip: {selected_server.server_ip} -domain: {selected_domain.domain_name} -plan_id: {plan.plan_id})')
     
     if current_user.role == UserRole.AGENT:
 

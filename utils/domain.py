@@ -19,6 +19,7 @@ from cache.database import get_redis_cache
 import logging
 import re
 
+MAX_USER_NUMBER_IN_DOMAIN = 10
 
 def register_domain_in_cloudflare(server_ip: str, db: Session, logger: logging.Logger) -> DbDomain:
 
@@ -71,17 +72,20 @@ def get_domain_via_server(server: BestServerForNewConfig, db: Session, logger: l
             enable_users_domain = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.ENABLE)
             disable_users_domain = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.DISABLE)
             total_users_domain = enable_users_domain + disable_users_domain
-            
-            if len(total_users_domain) < 10 and len(total_users_domain) < min_domain_number:
-                min_domain_number = len(total_users_domain)
 
+            if len(total_users_domain) < MAX_USER_NUMBER_IN_DOMAIN and len(total_users_domain) < min_domain_number:
+
+                min_domain_number = len(total_users_domain)
                 selected_domain = domain
 
-    if selected_domain is None and len(domains_server) * 10 < server.max_users:
+    if selected_domain is None and len(domains_server) * MAX_USER_NUMBER_IN_DOMAIN < server.max_users:
         
         selected_domain, err = register_domain_in_cloudflare(server.server_ip, db, logger)
         if err:
             return None, err
+
+    if selected_domain is None:
+        return None, HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2472, 'message':'this server has no any useable domain'})
 
     return selected_domain, None
 
