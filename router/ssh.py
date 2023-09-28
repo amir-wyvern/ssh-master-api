@@ -584,8 +584,8 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     if err:
         logger.error(f'[renew] delete ssh account failed (agent: {current_user.user_id} -username: {service.username} -new_domain: {selected_domain.domain_name} -new_server: {selected_server.server_ip} -resp_code: {err.status_code} -detail: {err.detail})')
         # raise err
-    
-    logger.info(f'[renew] ssh account successfully deleted (agent: {current_user.user_id} -username: {service.username} -new_domain: {selected_domain.domain_name} -new_server: {selected_server.server_ip})')
+    else:
+        logger.info(f'[renew] ssh account successfully deleted (agent: {current_user.user_id} -username: {service.username} -new_domain: {selected_domain.domain_name} -new_server: {selected_server.server_ip})')
     
     try:
         db_server.decrease_ssh_accounts_number(old_domain.server_ip, db, commit= False) 
