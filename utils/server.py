@@ -49,20 +49,18 @@ def find_best_server(db: Session, std_dev: int= 1, except_domains_id: List[int] 
     return BestServerForNewConfig(**selected_server)
 
 
-def find_server_and_domain(db: Session, logger: logging.Logger) -> Tuple[BestServerForNewConfig, DbDomain, HTTPException]:
+def find_server_and_domain(db: Session, logger: logging.Logger, except_servers: List[int]= [], std_dev: int= 1) -> Tuple[BestServerForNewConfig, DbDomain, HTTPException]:
 
-    expect_servers = []
-    
     while True:
 
-        selected_server = find_best_server(db, except_servers= expect_servers )
+        selected_server = find_best_server(db, except_servers= except_servers )
         if selected_server is None:
             return None, None, HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2450, 'message':'There is no server for new config'})
         
         selected_domain, err = get_domain_via_server(selected_server, db, logger)
 
         if err:
-            expect_servers.append(selected_server.server_ip)
+            except_servers.append(selected_server.server_ip)
             continue
         
         return selected_server, selected_domain, None

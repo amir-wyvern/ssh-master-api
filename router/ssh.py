@@ -542,33 +542,27 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
     if current_user.role != UserRole.ADMIN and service.agent_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={'message':'You are not the agent of this user', 'internal_code': 2419})
 
+    old_domain = db_domain.get_domain_by_id(service.domain_id, db)
 
     if request.new_domain_name :
-        domain = db_domain.get_domain_by_name(request.new_domain_name, db)
+        selected_domain = db_domain.get_domain_by_name(request.new_domain_name, db)
 
-        if domain == None:
+        if selected_domain == None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message':'domain_id not exists', 'internal_code': 2449})
         
-        if service.domain_id == domain.domain_id:
+        if service.domain_id == selected_domain.domain_id:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message':'new domain is same with old domain', 'internal_code': 2467})
         
-        selected_domain = domain
-        selected_server, err = get_server_via_domain(domain.domain_id, db)
+        selected_server, err = get_server_via_domain(selected_domain.domain_id, db)
         if err:
             raise err
 
     else:
 
-        selected_server = find_best_server(db, std_dev=2 ,except_domain_id= service.domain_id)
-        if selected_server is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2450, 'message':'There is no server for new config'})
-        
-        selected_domain, err = get_domain_via_server(selected_server, db, logger)
-        if err: 
+        selected_server, selected_domain, err = find_server_and_domain(db, logger, except_servers= [old_domain.server_ip])
+        if err:
             raise err
-
-
-    old_domain = db_domain.get_domain_by_id(service.domain_id, db)
+        
     logger.info(f'[renew] successfully find new server and domain (agent: {current_user.user_id} -username: {service.username} -old_domain: {old_domain.domain_name} -new_domain: {selected_domain.domain_name} -old_server: {old_domain.server_ip} -new_server: {selected_server.server_ip}')
 
     _, err = create_ssh_account(selected_server.server_ip, service.username, service.password)
