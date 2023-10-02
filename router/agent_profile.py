@@ -69,7 +69,10 @@ def get_agent_information(username: str= Query(None,description='This filed (age
         raise err
 
     services = db_ssh_service.get_services_by_agent_id(user_id, db, type_= ConfigType.MAIN) 
-    services_test = db_ssh_service.get_services_by_agent_id(user_id, db, type_= ConfigType.TEST) 
+    enable_services_test = db_ssh_service.get_services_by_agent_id(user_id, db, type_= ConfigType.TEST, status= ServiceStatusDb.ENABLE) 
+    expired_services_test = db_ssh_service.get_services_by_agent_id(user_id, db, type_= ConfigType.TEST, status= ServiceStatusDb.EXPIRED) 
+    disable_services_test = db_ssh_service.get_services_by_agent_id(user_id, db, type_= ConfigType.TEST, status= ServiceStatusDb.DISABLE) 
+    services_test = len(enable_services_test) + len(expired_services_test) + len(disable_services_test)
 
     all_services = 0
     enable_services = 0
@@ -119,7 +122,7 @@ def get_agent_information(username: str= Query(None,description='This filed (age
         'disable_ssh_services': disable_services,
         'expired_ssh_services': expired_services,
         'deleted_ssh_services': deleted_services,
-        'test_ssh_services': len(services_test),
+        'test_ssh_services': services_test,
         'referal_link': user.referal_link,
         'parent_agent_id': user.parent_agent_id,
         'role': user.role,
