@@ -141,7 +141,7 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
     server = db_server.create_server(request, db)
     logger.info(f'[new server] successfully saved in database (server_ip: {request.server_ip})')
     
-    new_domain = None
+    new_domain = ''
     if create_domain == DeployStatus.ENABLE:
         domain, err = register_domain_in_cloudflare(request.server_ip, db, logger)
         if err:
@@ -465,7 +465,7 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
     resp_block = {'not_exists_users': []}
     if listed_blocked_users:
         listed_old_users_for_blocking = [user['username'] for user in listed_disable_old_users]
-        resp_block, err = block_ssh_account_via_groups(request.new_server_ip, listed_old_users_for_blocking, ignore_exists_users= True)
+        resp_block, err = block_ssh_account_via_groups(request.new_server_ip, listed_old_users_for_blocking, ignore_not_exists_users= True)
         if err:
             logger.error(f'[transfer users] (block) ssh group account failed (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp_code: {err.status_code} -content: {err.detail})')
             db.rollback()
