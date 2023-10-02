@@ -336,7 +336,7 @@ def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_
         logger.error(f'[get users] error (server_ip: {server_ip}) -detail: {err.detail})')
         raise err
     
-    return UsersResponse(detail= resp, number_of_users= len(resp))
+    return UsersResponse(result= resp, count= len(resp))
 
 
 @router.get('/best', response_model= BestServerForNewConfig, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
