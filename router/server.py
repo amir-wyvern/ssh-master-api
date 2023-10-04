@@ -148,7 +148,7 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             raise err
         new_domain = domain.domain_name
 
-    return NewServerResponse(sever_ip= request.server_ip, domain_name= new_domain)
+    return NewServerResponse(server_ip= request.server_ip, domain_name= new_domain)
 
 @router.get('/nodes/update', response_model= UpdateNodesResponse , responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
@@ -502,7 +502,8 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
         db_server.decrease_ssh_accounts_number(request.old_server_ip, db, number= len(set(resp_del['success_users']))) 
     
     if request.disable_old_server:
-        db_domain.change_status(request.old_server_ip, ServerStatusDb.DISABLE, db)
+        db_server.change_server_status(request.old_server_ip, ServerStatusDb.DISABLE, db)
+        db_server.change_generate_status(request.old_server_ip, ServerStatusDb.DISABLE, db)
 
     db_server.increase_ssh_accounts_number(request.new_server_ip, db, number= len(resp_create['success_users']) )
 
