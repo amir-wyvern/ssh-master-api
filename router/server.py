@@ -488,7 +488,7 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
 
 
     for index, domain in enumerate(old_server_domains):
-        _, err = update_subdomain(domain.identifier, request.new_server_ip, domain.domain_name)
+        _, err = update_subdomain(domain.identifier, request.new_server_ip, domain.domain_name.split('.')[0])
         if err:
             not_updated_domains = [i.domain_name for i in old_server_domains[index:]]
             logger.error(f'[transfer server] (domain) failed to update cloudflare records (domain: {domain.domain_name} -new_server: {request.new_server_ip} -not_updated_domains: {not_updated_domains} -err_code: {err.status_code} -err_resp: {err.detail})')
