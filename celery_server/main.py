@@ -78,6 +78,14 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
             transfer_server_resp = self.main_api.transfer_server(old_host, server_ip)
             logger.info(f'successfully transfer new server (old_server: {old_host} -new_server: {server_ip} -msg: {transfer_server_resp})')
 
+            message = f'Server [{old_host}] has filtered and replace with this server [{server_ip}]'
+            payload = {
+                'bot_selector': 'admin_log',
+                'chat_id': 'admin',
+                'message': message
+            }
+            notifocaction_worker.apply_async(args=(payload,))
+
         except Exception as e:
 
             if hasattr(e, 'detail'):
