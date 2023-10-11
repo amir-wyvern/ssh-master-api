@@ -94,7 +94,7 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
                 logger.error(error_msg)
 
             else:
-                error_msg = f'error [{traceback.print_exc()}]'
+                error_msg = f'error [{traceback.format_exc()}]'
                 type_alarm = '🚨 Critical'
                 logger.critical(error_msg)
             

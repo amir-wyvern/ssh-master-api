@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append('/home/wyvern/projects/vpn_cluster/master')
+sys.path.append('/root/ssh-master-vpn')
 
 from celery_tasks.tasks import ReplaceServerCeleryTask, NotificationCeleryTask
 from celery_tasks.utils import create_worker_from
@@ -117,7 +117,7 @@ class CheckHosts:
                     logger.error(error_msg)
 
                 else:
-                    error_msg = f'error [{traceback.print_exc()}]'
+                    error_msg = f'error [{traceback.format_exc()}]'
                     type_alarm = '🚨 Critical'
                     logger.critical(error_msg)
                 

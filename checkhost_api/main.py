@@ -1,11 +1,10 @@
 import requests
 import sys
 
-sys.path.append('/home/wyvern/projects/vpn_cluster/master')
+sys.path.append('/root/ssh-master-api')
 
 from fastapi import HTTPException
 from time import sleep
-
 import logging
 
 logger = logging.getLogger('check_host_api.log') 
