@@ -30,7 +30,21 @@ logger.addHandler(console_handler)
 
 
 vpn_cluster_bot_token = os.getenv('VPN_CLUSTER_BOT_TOKEN')
-vpn_cluster_bot = Bot(token=vpn_cluster_bot_token)
+vpn_cluster_bot = Bot(token= vpn_cluster_bot_token)
+
+admin_log_bot_token = os.getenv('ADMIN_LOG_BOT_TOKEN')
+admin_log_bot = Bot(token= admin_log_bot_token)
+
+ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID')
+
+chat_id_dic = {
+    'admin': ADMIN_CHAT_ID
+}
+
+bot_selector_dic = {
+    'vpn_cluster': vpn_cluster_bot,
+    'admin_log': admin_log_bot
+}
 
 
 class NotificationCeleryTaskImpl(NotificationCeleryTask):
@@ -42,6 +56,10 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
         bot_selector = payload["bot_selector"]
 
         chat_id = payload["chat_id"]
+
+        if chat_id in chat_id_dic:
+            chat_id = chat_id_dic[chat_id]
+
         message = payload["message"]
 
         keyboards = None
@@ -51,6 +69,7 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
             parse_mode = payload["parse_mode"]
 
         if 'inline_keyboard' in payload and payload['inline_keyboard']:
+            
             inlines= [] 
             for line in payload['inline_keyboard']:
                 tmp = []
@@ -72,12 +91,15 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
 
             keyboards = ReplyKeyboardMarkup(inlines)
 
-        if bot_selector == 'vpn_cluster':
+
+        if bot_selector in bot_selector_dic:
+
             try:
-                vpn_cluster_bot.send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode )
+                bot_selector_dic[bot_selector].send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode )
             
             except Exception as e:
                 logger.error(f'[send notif] error (chat_id: {chat_id} -message: {message} -error: {e})')
+
 
 # create celery app
 app, _ = create_worker_from(NotificationCeleryTaskImpl)
