@@ -94,3 +94,25 @@
 
 # cloudflare
 4600= cloudflare error
+
+
+# check-host
+5101= check-host (error: {error})
+5102= check-result (error: {error})
+5103= can't fetch server data from api (error: {error})
+
+
+# server-provider
+6001= Cant load env vars for server provider api key
+6002= error in get user balance (err: {error})
+6003= false result in post auto renewal (err: {error})
+6004= false result in get list servers (err: {error})
+6005= false result in get user balance (err: {error})
+6006= error in get list data center (err: {error})
+6007= false result in get list data center (err: {error})
+6008= error in get list os images (err: {error})
+6009= false result in get list os images (err: {error})
+6010= failed to login to dashboard (err: {error})
+6011= false result login to dashboard (err: {error})
+6012= failed to get_ip (name: {name})
+6401= Incorrect username or password
