@@ -368,7 +368,7 @@ def get_active_users(server_ip: str= Query(None) ,current_user: TokenUser= Depen
         number_active_users = len(resp)
         number_active_sessions = sum([item['count'] for item in resp])
 
-        server_detail = ActiveUsersDetail(detail= resp, active_users= number_active_users, active_sessions= number_active_sessions)
+        server_detail = ActiveUsersDetail(ip= server_ip, detail= resp, active_users= number_active_users, active_sessions= number_active_sessions)
 
         return ActiveUsersResponse(total_active_users= number_active_users, total_sessions= number_active_sessions, detail= server_detail)
 
@@ -392,6 +392,7 @@ def get_active_users(server_ip: str= Query(None) ,current_user: TokenUser= Depen
             total_sessions += number_active_sessions
 
             response.append(ActiveUsersDetail(
+                ip= server.server_ip,
                 detail= resp,
                 active_users= number_active_users,
                 active_sessions= number_active_sessions
@@ -519,5 +520,4 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
         block_not_exists_users= resp_block['not_exists_users'],
         delete_not_exists_users= resp_del['not_exists_users']
     )
-
 

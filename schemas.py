@@ -150,6 +150,7 @@ class UpdateMaxUserServer(BaseModel):
 
 class ActiveUsersDetail(BaseModel):
 
+    ip: str
     detail: List[Dict]
     active_sessions: int
     active_users: int
