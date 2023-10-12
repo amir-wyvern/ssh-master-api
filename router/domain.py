@@ -196,6 +196,9 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
 
         new_server = db_server.get_server_by_ip(request.new_server_ip, db)
         
+        if  old_domain.server_ip == new_server.server_ip:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={'message': 'new server and old domain have same server', 'internal_code':2473})
+        
         if new_server.status == ServerStatusDb.DISABLE:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'new server is disable ', 'internal_code':2421})
         
@@ -232,7 +235,7 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
             raise err
 
         logger.info(f'[transfer domain] (block) ssh group account was created successfully (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to: {dest} -resp: {resp_block})')
-        success_users = list( set(success_users) & set(resp_block['success_users'])) 
+        success_users = list( set(success_users) | set(resp_block['success_users'])) 
 
     resp_del = {'not_exists_users': []}
     if request.delete_old_users: 
@@ -243,7 +246,7 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
             raise err
 
         logger.info(f'[transfer domain] (delete) ssh group account was successfully (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to: {dest} -resp: {resp_del})')
-        success_users = list( set(success_users) & set(resp_del['success_users'])) 
+        success_users = list( set(success_users) | set(resp_del['success_users'])) 
 
     if request.new_server_ip:
         
@@ -253,25 +256,25 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
             raise err
 
         old_server_ip = old_domain.server_ip
-        db_domain.update_server_ip(old_domain.domain_id, request.new_server_ip, db, commit= False)
+        db_domain.update_server_ip(old_domain.domain_id, request.new_server_ip, db)
         logger.info(f'[transfer domain] (domain) successfully updated domain (domain: {old_domain.domain_name} -from_server_ip: {old_server_ip} -to_server_ip: {request.new_server_ip} )')
         
         if request.delete_old_users:
-            db_server.decrease_ssh_accounts_number(old_domain.server_ip, db, number= len(set(resp_del['success_users'])), commit= False) 
+            db_server.decrease_ssh_accounts_number(old_domain.server_ip, db, commit= False, number= len(set(resp_del['success_users']))) 
         
-        db_server.increase_ssh_accounts_number(request.new_server_ip, db, number= len(resp_create['success_users']) ,commit= False)
+        db_server.increase_ssh_accounts_number(request.new_server_ip, db, commit= False, number= len(resp_create['success_users']))
+        db.commit()
 
         resp = DomainTransferResponse(
             old_domain_name= old_domain.domain_name,
             from_server= old_server_ip,
             to_server= request.new_server_ip,
             success_users= success_users,
-            create_exists_users= resp_create['exists_users'],
-            block_not_exists_users= resp_block['not_exists_users'],
-            delete_not_exists_users= resp_del['not_exists_users']
+            failed_create_users= resp_create['exists_users'],
+            failed_block_users= resp_block['not_exists_users'],
+            failed_del_users= resp_del['not_exists_users']
         )
     
-        db.commit()
 
     elif request.new_domain_name:
 
@@ -299,9 +302,9 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
             from_server= old_domain.server_ip,
             to_server= new_domain.server_ip,
             success_users= success_users,
-            create_exists_users= resp_create['exists_users'],
-            block_not_exists_users= resp_block['not_exists_users'],
-            delete_not_exists_users= resp_del['not_exists_users']
+            failed_create_users= resp_create['exists_users'],
+            failed_block_users= resp_block['not_exists_users'],
+            failed_del_users= resp_del['not_exists_users']
         )
     
     logger.info(f'[transfer domain] successfully transfer users (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to: {dest})')

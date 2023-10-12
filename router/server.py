@@ -473,7 +473,7 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
             raise err
 
         logger.info(f'[transfer users] (block) ssh group account was created successfully (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp: {resp_block})')
-        success_users = list( set(success_users) & set(resp_block['success_users'])) 
+        success_users = list( set(success_users) | set(resp_block['success_users'])) 
 
     resp_del = {'not_exists_users': []}
     if request.delete_old_users: 
@@ -485,7 +485,7 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
             raise err
 
         logger.info(f'[transfer users] (delete) ssh group account was successfully (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp: {resp_del})')
-        success_users = list( set(success_users) & set(resp_del['success_users'])) 
+        success_users = list( set(success_users) | set(resp_del['success_users'])) 
 
 
     for index, domain in enumerate(old_server_domains):
