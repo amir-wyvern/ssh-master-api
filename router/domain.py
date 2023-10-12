@@ -226,7 +226,7 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
     resp_block = {'not_exists_users': []}
     if listed_block_users:
         listed_old_users_for_blocking = [user['username'] for user in listed_block_users]
-        resp_block, err = block_ssh_account_via_groups(new_ip, listed_old_users_for_blocking, ignore_exists_users= True)
+        resp_block, err = block_ssh_account_via_groups(new_ip, listed_old_users_for_blocking, ignore_not_exists_users= True)
         if err:
             logger.error(f'[transfer domain] (block) ssh group account failed (from_domain_name: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to: {dest} -resp_code: {err.status_code} -content: {err.detail})')
             raise err
