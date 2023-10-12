@@ -157,7 +157,7 @@ class ActiveUsersDetail(BaseModel):
     
 class ActiveUsersResponse(BaseModel):
 
-    server_number: int
+    server_number: Optional[int]
     total_active_users: int
     total_sessions: int
     detail: List[ActiveUsersDetail]
@@ -391,9 +391,9 @@ class DomainTransferResponse(BaseModel):
     from_server: str
     to_server: str
     success_users: List[str]
-    create_exists_users: List[str]
-    block_not_exists_users: List[str]
-    delete_not_exists_users: List[str]
+    failed_create_users: List[str]
+    failed_block_users: List[str]
+    failed_del_users: List[str]
 
 class NewUserViaSshService(BaseModel):
 
