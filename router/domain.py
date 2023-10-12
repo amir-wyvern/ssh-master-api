@@ -252,7 +252,7 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
             logger.error(f'[transfer domain] (domain) failed to update cloudflare records (domain: {old_domain.domain_name} -new_server: {request.new_server_ip} -err_code: {err.status_code} -err_resp: {err.detail})')
             raise err
 
-        db_domain.update_server_ip(old_domain.domain_id, request.new_server_ip, db, commit= False)
+        db_domain.update_server_ip(old_domain.domain_id, request.new_server_ip, db)
         logger.info(f'[transfer domain] (domain) successfully updated domain (domain: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_server_ip: {request.new_server_ip} )')
         
         if request.delete_old_users:
