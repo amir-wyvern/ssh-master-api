@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append('/root/ssh-master-vpn')
+sys.path.append('/root/ssh-master-api')
 
 from celery_tasks.tasks import ReplaceServerCeleryTask, NotificationCeleryTask
 from celery_tasks.utils import create_worker_from
