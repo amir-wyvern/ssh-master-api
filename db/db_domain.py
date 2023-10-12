@@ -80,12 +80,13 @@ def get_domains_by_attrs(db: Session, **kwargs) -> List[DbDomain]:
     return db.query(DbDomain).filter(and_(*attrs)).all()
 
 
-def update_server_ip(domain_id, new_server_ip, db: Session) :
+def update_server_ip(domain_id, new_server_ip, db: Session, commit= True) :
 
     server = db.query(DbDomain).filter(DbDomain.domain_id == domain_id )
 
     server.update({DbDomain.server_ip: new_server_ip })
-    db.commit()
+    if commit:
+        db.commit()
 
     return server
 
