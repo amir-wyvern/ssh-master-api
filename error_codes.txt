@@ -68,6 +68,7 @@
 2470= Only admin has access to agent_username field
 2471= just needed to one keys (new_server_ip or new_domain_name)
 2472= this server has no any useable domain
+2473= new server and old domain have same server
 
 # financial
 1003= There was a problem in registering the deposit request
