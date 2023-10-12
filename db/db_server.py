@@ -152,7 +152,7 @@ def decrease_ssh_accounts_number(server_ip, db: Session, commit= True, number= 1
 
     server = db.query(DbServer).filter(DbServer.server_ip == server_ip )
 
-    if server.first().ssh_accounts_number > 0 :
+    if (server.first().ssh_accounts_number - number) > 0 :
         server.update({DbServer.ssh_accounts_number: server.first().ssh_accounts_number - number})
         if commit:
             db.commit()
