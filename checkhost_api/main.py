@@ -60,13 +60,15 @@ def request_id_worker(request_id):
             if check_none_result is True:
                 sleep(2)
                 continue 
+            
+            break
         
         if check_none_result is True:
             continue 
 
         res_nodes = []
         for node_result in result.json().values():
-            res = [1 if (res and res[0] == 'OK') else 0 for res in node_result[0] ]
+            res = [1 if (res and res[0] == 'OK') else 0 for res  in node_result[0] ]
             if sum(res) >= len(node_result[0]) // 2:
                 res_nodes.append(1)
         

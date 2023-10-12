@@ -56,7 +56,7 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
 
         try:
             old_host = payload['host'] 
-            
+            # add this featcher : check server for active for stoped ,coz if server stoped , we dont need to buy new server and we need to recharge
             while True:
 
                 while True:
