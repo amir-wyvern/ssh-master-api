@@ -252,8 +252,9 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
             logger.error(f'[transfer domain] (domain) failed to update cloudflare records (domain: {old_domain.domain_name} -new_server: {request.new_server_ip} -err_code: {err.status_code} -err_resp: {err.detail})')
             raise err
 
+        old_server_ip = old_domain.server_ip
         db_domain.update_server_ip(old_domain.domain_id, request.new_server_ip, db, commit= False)
-        logger.info(f'[transfer domain] (domain) successfully updated domain (domain: {old_domain.domain_name} -from_server_ip: {old_domain.server_ip} -to_server_ip: {request.new_server_ip} )')
+        logger.info(f'[transfer domain] (domain) successfully updated domain (domain: {old_domain.domain_name} -from_server_ip: {old_server_ip} -to_server_ip: {request.new_server_ip} )')
         
         if request.delete_old_users:
             db_server.decrease_ssh_accounts_number(old_domain.server_ip, db, number= len(set(resp_del['success_users'])), commit= False) 
@@ -262,7 +263,7 @@ def transfer_configs_via_domain(request: DomainTransfer, current_user: TokenUser
 
         resp = DomainTransferResponse(
             old_domain_name= old_domain.domain_name,
-            from_server= old_domain.server_ip,
+            from_server= old_server_ip,
             to_server= request.new_server_ip,
             success_users= success_users,
             create_exists_users= resp_create['exists_users'],
