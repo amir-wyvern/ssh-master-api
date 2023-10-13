@@ -56,7 +56,7 @@ def request_id_worker(request_id):
                 logger.error(f'failed in send requests to get result of check host (request_id: {request_id} -err_status: {result.status_code} -err_msg: {result.content})')
                 raise HTTPException(status_code= result.status_code, detail={'internal_code': 5102, 'detail': f'check-result (error: {result.content})'})
 
-            check_none_result = any(item is None for item in result.json().values())
+            check_none_result = any([item is None for item in result.json().values()])
             if check_none_result is True:
                 sleep(2)
                 continue 
@@ -68,13 +68,13 @@ def request_id_worker(request_id):
 
         res_nodes = []
         for node_result in result.json().values():
-            res = [1 if (res and res[0] == 'OK') else 0 for res  in node_result[0] ]
-            if sum(res) >= len(node_result[0]) // 2:
-                res_nodes.append(1)
+            if node_result[0] is not None:
+                res = [1 if (res and res[0] == 'OK') else 0 for res  in node_result[0] ]
+                if sum(res) >= len(node_result[0]) // 2:
+                    res_nodes.append(1)
         
         status = False
         if sum(res_nodes) > len(result.json()) // 2:
             status = True
 
         return status
-    
