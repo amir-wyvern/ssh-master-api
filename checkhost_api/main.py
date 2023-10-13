@@ -51,6 +51,10 @@ def request_id_worker(request_id):
 
         for _ in range(3):
             result = requests.get(f'https://check-host.net/check-result/{request_id}', headers= headers)
+            
+            if result.status_code == 525:
+                logger.error(f'(handshake) failed in send requests to get result of check host (request_id: {request_id} -err_status: {result.status_code} -err_msg: {result.content})')
+                continue
 
             if result.status_code != 200:
                 logger.error(f'failed in send requests to get result of check host (request_id: {request_id} -err_status: {result.status_code} -err_msg: {result.content})')
