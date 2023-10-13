@@ -78,7 +78,7 @@ class VPS4:
             'X-Requested-With': 'XMLHttpRequest'
         }
 
-        self.data_center_tmp = { 'Turkiye': 53 ,'Greece': 57, 'Belgium': 62}
+        self.data_center_tmp = { 'Turkiye': 53 } # ,'Greece': 57, 'Belgium': 62}
         self.os_list = {'debian11': 25}
 
     def buy_server(self, server_name):
