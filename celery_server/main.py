@@ -2,7 +2,7 @@ import sys
 
 sys.path.append('../')
 
-from cache.cache_session import set_server_number, get_server_number
+from cache.cache_session import set_server_number, get_server_number, set_server_proccessing, get_server_proccessing
 from celery_tasks.tasks import ReplaceServerCeleryTask, NotificationCeleryTask
 from celery_tasks.utils import create_worker_from
 from celery_server.server_provider import VPS4
@@ -56,6 +56,11 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
 
         try:
             old_host = payload['host'] 
+            if get_server_proccessing(old_host, get_redis_cache().__next__()):
+                return
+            
+            set_server_proccessing(old_host, get_redis_cache().__next__())
+            
             # add this featcher : check server for active for stoped ,coz if server stoped , we dont need to buy new server and we need to recharge
             while True:
 
@@ -69,7 +74,7 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
                     break
 
                 provider_4vps.automatic_renewal(server_id, server_ip)
-            
+
             logger.info(f'send requests to submit new server ... (ip: {server_ip})')
             new_server_resp = self.main_api.submit_new_server(server_ip, password, location)
             logger.info(f'successfully submited new server (ip: {server_ip} -msg: {new_server_resp})')
