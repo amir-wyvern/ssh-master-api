@@ -95,7 +95,7 @@ class NotificationCeleryTaskImpl(NotificationCeleryTask):
         if bot_selector in bot_selector_dic:
 
             try:
-                bot_selector_dic[bot_selector].send_message(chat_id= chat_id, text= message ,reply_markup= keyboards, parse_mode= parse_mode )
+                bot_selector_dic[bot_selector].send_message(chat_id= chat_id, text= message[:1000] ,reply_markup= keyboards, parse_mode= parse_mode )
             
             except Exception as e:
                 logger.error(f'[send notif] error (chat_id: {chat_id} -message: {message} -error: {e})')
