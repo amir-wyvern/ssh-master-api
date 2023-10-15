@@ -78,8 +78,26 @@ class VPS4:
             'X-Requested-With': 'XMLHttpRequest'
         }
 
-        self.data_center_tmp = { 'Turkiye': 53 } # ,'Greece': 57, 'Belgium': 62}
-        self.os_list = {'debian11': 25}
+        self.server_lib = {
+            # 'Turkiye-Izmir':{            
+            #     'tarif': 13,
+            #     'datacenter': 53,
+            #     'ostempl': 25,
+            #     'recipe': '',
+            #     'count': 1,
+            #     'period': 1,
+            #     'promocode':'' 
+            # }, 
+            'Turkiye-Istanbul': {
+                'tarif': 19,
+                'datacenter': 63,
+                'ostempl': 25,
+                'recipe': '',
+                'count': 1,
+                'period': 1,
+                'promocode':'' 
+            }
+        }
 
     def buy_server(self, server_name):
         
@@ -87,17 +105,21 @@ class VPS4:
 
         if balance > 1:
             
-            data_center = choice(list(self.data_center_tmp.keys()))
-            self.login()
-            self._buy_server(server_name, self.data_center_tmp[data_center], self.os_list['debian11'])
-            server_id, server_ip = self.get_ip(server_name)
+            location = choice(list(self.server_lib.keys())) 
+            self.login() 
 
-            self.login()
-            password = self.dashboard_message(server_name, self.data_center_tmp[data_center])
+            data= self.server_lib[location].copy() 
+            data['name'] = server_name 
+            
+            self._buy_server(server_name, data)
+            server_id, server_ip = self.get_ip(server_name) 
+
+            self.login() 
+            password = self.dashboard_message(data) 
 
             logger.info('(buyserver) finish buy server and ready for use')
 
-            return server_ip, server_id, password, data_center
+            return server_ip, server_id, password, location
 
         else:
             raise HTTPException(status_code= 403, detail= {'internal_code': 6002, 'detail': 'not enough balance for new server'})
@@ -225,18 +247,11 @@ class VPS4:
         logger.info('(login) successfully login')
         return True
     
-    def _buy_server(self, name, data_center, os_image):
+    def _buy_server(self, data):
         
-        data = {
-            'tarif': 13,
-            'datacenter': data_center,
-            'ostempl': os_image,
-            'recipe': '',
-            'name': name,
-            'count': 1,
-            'period': 1,
-            'promocode':'' 
-        }
+        name = data['name']
+        data_center = data['datacenter']
+
         resp = requests.post('https://4vps.su/dashboard/action/buyServer4', data= data, headers= self.dashboard_header)
 
         if resp.status_code != 200:
@@ -251,18 +266,9 @@ class VPS4:
         
         return True
 
-    def dashboard_message(self, server_name, data_center):
+    def dashboard_message(self, data):
 
-        data = {
-            'tarif': 13,
-            'datacenter': data_center,
-            'ostempl': 25,
-            'recipe': '',
-            'name': server_name,
-            'count': 1,
-            'period': 1,
-            'promocode':'' 
-        }
+        server_name = data['name']
 
         for _ in range(10):
             
