@@ -87,11 +87,17 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             'apt-get -y install sudo',
             'apt-get -y install git',
             'apt-get -y install tmux',
+            'apt-get -y install screen',
+            'apt-get -y install lsof',
             'git clone https://github.com/amir-wyvern/ssh-slave-api.git /root/ssh-slave-api',
             'python -m venv /root/ssh-slave-api/venv',
             f'echo "TOKEN=\'{slave_token}\'" > /root/ssh-slave-api/.env',
-            'tmux new-session -d -s slave',
+            'wget -O /usr/bin/badvpn-udpgw https://raw.githubusercontent.com/daybreakersx/premscript/master/badvpn-udpgw64',
+            'chmod +x /usr/bin/badvpn-udpgw',
+            "echo -e '#!/bin/sh -e\nscreen -AmdS badvpn badvpn-udpgw --listen-addr 127.0.0.1:7300\nscreen -AmdS badvpn badvpn-udpgw --listen-addr 127.0.0.1:7301\ntmux new-session -d -s slave\ntmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter\nexit 0' > /etc/rc.local",
+            'chmod +x /etc/rc.local',
             "tmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter",
+            'reboot'
         ]
 
         try:
@@ -124,7 +130,7 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             logger.error(f"[new server] An error occurred (server_ip: {request.server_ip} -error: {e})")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
         
-        for _ in range(30):
+        for _ in range(60):
             sleep(1)
 
             _, err = get_users(request.server_ip)
