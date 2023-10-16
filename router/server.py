@@ -91,6 +91,7 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             'apt-get -y install tmux',
             'apt-get -y install screen',
             'apt-get -y install lsof',
+            'apt-get -y install wget',
             'echo manager ALL=\(ALL\) NOPASSWD: ALL >> /etc/sudoers',
             'git clone https://github.com/amir-wyvern/ssh-slave-api.git /root/ssh-slave-api',
             'python -m venv /root/ssh-slave-api/venv',
