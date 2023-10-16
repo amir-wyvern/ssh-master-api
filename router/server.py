@@ -27,7 +27,9 @@ from schemas import (
     ServerConnection,
     ServiceStatusDb,
     ActiveUsersDetail,
-    NodesStatusResponse
+    NodesStatusResponse,
+    NodesCommand,
+    NodesCommandResponse
 )
 from db.database import get_db
 from db import db_server, db_domain, db_ssh_service
@@ -96,8 +98,8 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             'chmod +x /usr/bin/badvpn-udpgw',
             "echo -e '#!/bin/sh -e\nscreen -AmdS badvpn badvpn-udpgw --listen-addr 127.0.0.1:7300\nscreen -AmdS badvpn badvpn-udpgw --listen-addr 127.0.0.1:7301\ntmux new-session -d -s slave\ntmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter\nexit 0' > /etc/rc.local",
             'chmod +x /etc/rc.local',
-            "tmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter",
-            'reboot'
+            'shutdown -r -t 2',
+            "tmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter"
         ]
 
         try:
@@ -131,6 +133,7 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='check the logs for more info')
         
         for _ in range(60):
+            
             sleep(1)
 
             _, err = get_users(request.server_ip)
@@ -156,7 +159,59 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
 
     return NewServerResponse(server_ip= request.server_ip, domain_name= new_domain)
 
-@router.get('/nodes/update', response_model= UpdateNodesResponse , responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
+
+@router.get('/nodes/command', response_model= NodesCommandResponse , responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
+def update_nodes(request: NodesCommand, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+    
+    failed_servers = {}
+    results = {}
+    if request.servers_ip:
+        servers = request.servers_ip
+
+    else:
+        servers = [ serv.server_ip for serv in db_server.get_all_server(db, status= ServerStatusDb.ENABLE)]
+
+    for server_ip in servers:
+        server = db_server.get_server_by_ip(server_ip)
+        
+        if server is None:
+            failed_servers['server_ip'] = 'server not exists'
+            continue
+
+        try:
+            ssh_client = paramiko.SSHClient()
+            ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            # Connect to the remote machine
+            ssh_client.connect(server.server_ip, username= 'manager', password= server.manager_password, port= server.ssh_port)
+
+            results[server.server_ip] = []
+            # Switch to the root user
+            for command in request.commands:
+                sudo_command = f"sudo sh -c '{command}' "
+                stdin, stdout, stderr = ssh_client.exec_command(sudo_command)
+                exit_status = stdout.channel.recv_exit_status()
+                
+                error_command = stderr.read().decode('utf-8')
+                stdout_result = stdout.read().decode('utf-8')
+
+                if error_command:
+                    results[server.server_ip].append(error_command)
+                else:
+                    results[server.server_ip].append(stdout_result)
+
+
+        except Exception as e:
+            failed_servers['server_ip'] = str(e)
+            print(f"An error occurred: {str(e)}")
+
+        finally:
+            # Close the SSH session
+            ssh_client.close()
+    
+    return NodesCommandResponse(failed_servers=failed_servers, results= results)
+
+@router.post('/nodes/update', response_model= UpdateNodesResponse , responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def update_nodes(current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
     servers = db_server.get_all_server(db, status= ServerStatusDb.ENABLE) 

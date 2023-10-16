@@ -223,6 +223,16 @@ class ServerTransfer(BaseModel):
     disable_old_server: bool
     delete_old_users: bool
 
+class NodesCommand(BaseModel):
+
+    servers_ip: List[str]
+    commands: List[str]
+
+class NodesCommandResponse(BaseModel):
+
+    failed_servers: Dict[str, str]
+    results: Dict[str, List[str]]
+
 class ServerTransferResponse(BaseModel):
 
     from_server: str
