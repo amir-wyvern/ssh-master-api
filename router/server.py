@@ -173,7 +173,7 @@ def update_nodes(request: NodesCommand, current_user: TokenUser= Depends(get_adm
         servers = [ serv.server_ip for serv in db_server.get_all_server(db, status= ServerStatusDb.ENABLE)]
 
     for server_ip in servers:
-        server = db_server.get_server_by_ip(server_ip)
+        server = db_server.get_server_by_ip(server_ip, db)
         
         if server is None:
             failed_servers['server_ip'] = 'server not exists'
