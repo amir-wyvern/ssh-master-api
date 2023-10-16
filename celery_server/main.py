@@ -168,7 +168,7 @@ class MainApi:
             "server_type": "main",
             "location": location,
             "ssh_port": 6379,
-            "max_users": 30,
+            "max_users": 70,
             "ssh_accounts_number": 0,
             "v2ray_accounts_number": 0,
             "root_password": password,
