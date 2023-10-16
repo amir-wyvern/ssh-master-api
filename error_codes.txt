@@ -117,3 +117,5 @@
 6011= false result login to dashboard (err: {error})
 6012= failed to get_ip (name: {name})
 6401= Incorrect username or password
+6013= error in buy server resps [server_ip: {server_ip} -server_id: {server_id} -password: {password} -location: {location}]
+6014= in disable new server ,server id not exist for automatic_renewal
