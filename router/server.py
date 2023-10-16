@@ -161,7 +161,7 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
     return NewServerResponse(server_ip= request.server_ip, domain_name= new_domain)
 
 
-@router.get('/nodes/command', response_model= NodesCommandResponse , responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
+@router.post('/nodes/command', response_model= NodesCommandResponse , responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def update_nodes(request: NodesCommand, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
     
     failed_servers = {}
