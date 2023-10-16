@@ -114,8 +114,25 @@ class VPS4:
             self._buy_server(server_name, data)
             server_id, server_ip = self.get_ip(server_name) 
 
+            if not all([server_ip, server_id, location]):
+                logger.error(f'(buyserver) error in resps [server_name: {server_name} -server_ip: {server_ip} -server_id: {server_id} -location: {location}]')
+                if not server_id:
+                    logger.error('(buyserver) server id not exist for automatic_renewal')
+                    raise HTTPException(status_code= 403, detail= {'internal_code': 6014, 'detail': 'in disable new server ,server id not exist for automatic_renewal'})
+
+                self.automatic_renewal(server_id, server_ip)
+
+                raise HTTPException(status_code= 403, detail= {'internal_code': 6013, 'detail': f'error in buy server resps [server_name: {server_name} -server_ip: {server_ip} -server_id: {server_id} -location: {location}]'})
+            
             self.login() 
             password = self.dashboard_message(data) 
+
+            if not password:
+                logger.error(f'(buyserver) failed to extract password (server_name: {server_name} -server_ip: {server_ip} -server_id: {server_id} -location: {location}])')
+                self.automatic_renewal(server_id, server_ip)
+
+                raise HTTPException(status_code= 403, detail= {'internal_code': 6013, 'detail': f'(buyserver) failed to extract password (server_name: {server_name} -server_ip: {server_ip} -server_id: {server_id} -location: {location}])'})
+            
 
             logger.info('(buyserver) finish buy server and ready for use')
 
@@ -141,7 +158,7 @@ class VPS4:
         creating_flag = False
         installing_flag = False
 
-        for _ in range(60):
+        for _ in range(100):
 
             for server in self.list_servers()[:5]:
                 if server['name'] == server_name:
@@ -174,6 +191,21 @@ class VPS4:
             raise HTTPException(status_code= resp.status_code, detail= {'internal_code': 6004, 'detail': f'false result in get list servers (err: {resp.content})'})
         
         return resp.json()['data']['serverlist']
+
+    def disable_old_server(self, server_ip):
+
+        logger.info(f'(disable_old_server) send request for disable old server ... (ip: {server_ip})')
+        my_servers = self.list_servers()
+
+        for server in my_servers:
+
+            if server['ipv4'] == server_ip:
+                new_status = self.automatic_renewal(server['id'], server_ip)
+                logger.info(f'(disable_old_server) successfully disable server (ip: {server_ip} -new_status: {new_status})')
+                
+                return
+
+        logger.error(f'(disable_old_server) cant find this server (ip: {server_ip})')
 
     def automatic_renewal(self, server_id, server_ip):
 
@@ -283,6 +315,9 @@ class VPS4:
             except (ConnectTimeout, ConnectionError, ReadTimeout):
                 logger.error('error in get dashboard message (TimeOut)')
                 sleep(1)
+        
+        if resp.status_code != 200:
+            return False
         
         return self._scrap(resp.text, server_name)
         

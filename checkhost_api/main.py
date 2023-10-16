@@ -78,7 +78,7 @@ def request_id_worker(request_id):
                     res_nodes.append(1)
         
         status = False
-        if sum(res_nodes) > len(result.json()) // 2:
+        if sum(res_nodes) >= len(result.json()) // 2:
             status = True
 
         return status

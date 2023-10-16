@@ -59,16 +59,29 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
             if get_server_proccessing(old_host, get_redis_cache().__next__()):
                 return
             
+            message = f'❕ Receive a signal about filtered server [{old_host}]'
+            payload = {
+                'bot_selector': 'admin_log',
+                'chat_id': 'admin',
+                'message': message
+            }
+            notifocaction_worker.apply_async(args=(payload,))
+
             set_server_proccessing(old_host, get_redis_cache().__next__())
             
             # add this featcher : check server for active for stoped ,coz if server stoped , we dont need to buy new server and we need to recharge
             while True:
 
                 while True:
-                    server_ip, server_id, password, location = self.request_new_server()
-                    if server_ip:
+                    try:
+                        server_ip, server_id, password, location = self.request_new_server()
                         break
-                
+
+                    except Exception as e:
+                        if not hasattr(e, 'detail'):
+                            raise e
+
+
                 status = check_host(server_ip)
                 if status:
                     break
@@ -83,6 +96,8 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
             transfer_server_resp = self.main_api.transfer_server(old_host, server_ip)
             logger.info(f'successfully transfer new server (old_server: {old_host} -new_server: {server_ip} -msg: {transfer_server_resp})')
 
+            provider_4vps.disable_old_server(old_host)
+            
             message = f'Server [{old_host}] has filtered and replace with this server [{server_ip}]'
             payload = {
                 'bot_selector': 'admin_log',
@@ -121,10 +136,6 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
         set_server_number(new_server_number, get_redis_cache().__next__() )
 
         server_ip, server_id, password, data_center = provider_4vps.buy_server(new_server_name)
-        if server_ip == False:
-            provider_4vps.automatic_renewal(server_id, server_ip)
-            return False, False, False, False
-        
         
         return server_ip, server_id, password, data_center
 
