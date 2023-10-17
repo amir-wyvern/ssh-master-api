@@ -89,7 +89,7 @@ class VPS4:
             #     'promocode':'' 
             # }, 
             'Turkiye-Istanbul': {
-                'tarif': 19,
+                'tarif': 13,
                 'datacenter': 63,
                 'ostempl': 25,
                 'recipe': '',
