@@ -111,7 +111,7 @@ class VPS4:
             data= self.server_lib[location].copy() 
             data['name'] = server_name 
             
-            self._buy_server(server_name, data)
+            self._buy_server(data)
             server_id, server_ip = self.get_ip(server_name) 
 
             if not all([server_ip, server_id, location]):
