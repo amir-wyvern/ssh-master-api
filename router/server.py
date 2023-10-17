@@ -96,8 +96,8 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             'git clone https://github.com/amir-wyvern/ssh-slave-api.git /root/ssh-slave-api',
             f'echo "TOKEN=\'{slave_token}\'" > /root/ssh-slave-api/.env',
             'python -m venv /root/ssh-slave-api/venv',
-            'tmux new-session -d -s slave'
-            "tmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter"
+            'tmux new-session -d -s slave',
+            "tmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter",
             'wget -O /usr/bin/badvpn-udpgw https://raw.githubusercontent.com/daybreakersx/premscript/master/badvpn-udpgw64',
             'chmod +x /usr/bin/badvpn-udpgw',
             "echo -e '#!/bin/sh -e\nscreen -AmdS badvpn badvpn-udpgw --listen-addr 127.0.0.1:7300\nscreen -AmdS badvpn badvpn-udpgw --listen-addr 127.0.0.1:7301\ntmux new-session -d -s slave\ntmux send-keys -t slave 'cd /root/ssh-slave-api;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 8090' Enter\nexit 0' > /etc/rc.local",
