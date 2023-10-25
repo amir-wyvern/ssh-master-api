@@ -76,6 +76,7 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
                 logger.info(f'send requests to submit new server ... (ip: {server_ip})')
                 new_server_resp = self.main_api.submit_new_server(server_ip, password, location)
                 if new_server_resp == False:
+                    provider_4vps.automatic_renewal(server_id, server_ip)
                     continue
 
                 break
