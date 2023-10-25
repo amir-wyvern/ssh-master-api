@@ -87,7 +87,7 @@ class VPS4:
                 'count': 1,
                 'period': 1,
                 'promocode':'' 
-            } 
+            } ,
             'Turkiye-Istanbul': {
                 'tarif': 13,
                 'datacenter': 63,
