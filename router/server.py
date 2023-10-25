@@ -21,8 +21,10 @@ from schemas import (
     BestServerForNewConfig,
     UpdateNodesResponse,
     ServerTransfer,
+    AutoServerTransfer,
     NewServerResponse,
     ServerTransferResponse,
+    AutoTransferServerResponse,
     NodesStatusDetail,
     ServerConnection,
     ServiceStatusDb,
@@ -42,12 +44,13 @@ from paramiko import AuthenticationException
 
 from cloudflare_api.subdomain import update_subdomain
 from utils.domain import register_domain_in_cloudflare
+from celery_tasks.tasks import ReplaceServerCeleryTask
+from celery_tasks.utils import create_worker_from
 from slave_api.ssh import create_ssh_account_via_group, block_ssh_account_via_groups, delete_ssh_account_via_group
 from typing import List
 from time import sleep
 import logging
 import os   
-
 # Create a file handler to save logs to a file
 logger = logging.getLogger('server_route.log') 
 logger.setLevel(logging.INFO)
@@ -64,8 +67,10 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-router = APIRouter(prefix='/server', tags=['Server'])
+_, replace_server_worker = create_worker_from(ReplaceServerCeleryTask)
 
+
+router = APIRouter(prefix='/server', tags=['Server'])
 
 @router.post('/new', response_model= NewServerResponse,responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus.ENABLE, create_domain: DeployStatus = DeployStatus.DISABLE , current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
@@ -580,4 +585,27 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
         block_not_exists_users= resp_block['not_exists_users'],
         delete_not_exists_users= resp_del['not_exists_users']
     )
+
+
+@router.post('/transfer/auto', response_model= AutoTransferServerResponse, responses={
+    status.HTTP_404_NOT_FOUND:{'model': HTTPError},
+    status.HTTP_500_INTERNAL_SERVER_ERROR:{'model': HTTPError},
+    status.HTTP_408_REQUEST_TIMEOUT:{'model': HTTPError},
+    status.HTTP_409_CONFLICT:{'model':HTTPError}})
+def transfer_configs_via_server(request: AutoServerTransfer, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+
+    old_server = db_server.get_server_by_ip(request.old_server_ip, db)
+    if old_server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'message': 'old server not exists', 'internal_code':2406})
+
+    if old_server.status == ServerStatusDb.DISABLE:
+        raise HTTPException(status_code= status.HTTP_409_CONFLICT, detail={'message': f'The Server [{old_server.server_ip}] has disable', 'internal_code': 2427})
+
+    payload = {
+        'host': old_server.server_ip,
+        'task': 'AutoTransferConfigs'
+    }
+    replace_server_worker.apply_async(args=(payload,))
+
+    return AutoTransferServerResponse(status= 'Proccessing...')
 
