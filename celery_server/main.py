@@ -68,28 +68,18 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
             notifocaction_worker.apply_async(args=(payload,))
 
             set_server_proccessing(old_host, get_redis_cache().__next__())
-            
+
             # add this featcher : check server for active for stoped ,coz if server stoped , we dont need to buy new server and we need to recharge
             while True:
+                server_ip, server_id, password, location = self.requests_to_provider_for_new_server()
 
-                while True:
-                    try:
-                        server_ip, server_id, password, location = self.request_new_server()
-                        break
+                logger.info(f'send requests to submit new server ... (ip: {server_ip})')
+                new_server_resp = self.main_api.submit_new_server(server_ip, password, location)
+                if new_server_resp == False:
+                    continue
 
-                    except Exception as e:
-                        if not hasattr(e, 'detail'):
-                            raise e
+                break
 
-
-                status = check_host(server_ip)
-                if status:
-                    break
-
-                provider_4vps.automatic_renewal(server_id, server_ip)
-
-            logger.info(f'send requests to submit new server ... (ip: {server_ip})')
-            new_server_resp = self.main_api.submit_new_server(server_ip, password, location)
             logger.info(f'successfully submited new server (ip: {server_ip} -msg: {new_server_resp})')
             
             logger.info(f'send request to transfer server (old_server: {old_host} -new_server: {server_ip})')
@@ -139,6 +129,28 @@ class ReplaceServerCeleryTaskImpl(ReplaceServerCeleryTask):
         
         return server_ip, server_id, password, data_center
 
+    def requests_to_provider_for_new_server(self):
+
+        while True:
+
+            while True:
+                try:
+                    server_ip, server_id, password, location = self.request_new_server()
+                    break
+
+                except Exception as e:
+                    if not hasattr(e, 'detail'):
+                        raise e
+
+
+            status = check_host(server_ip)
+            if status:
+                break
+
+            provider_4vps.automatic_renewal(server_id, server_ip)
+
+        return server_ip, server_id, password, location
+
 
 class MainApi:
 
@@ -187,6 +199,9 @@ class MainApi:
 
         if resp.status_code != 200:
             logger.error(f'(submit_new_server) failed to submit new server (ip: {server_ip} -err_status: {resp.status_code} -err_msg: {resp.content})')
+            if resp.status_code == 409 and hasattr('json',resp) and 'internal_code' in resp.json():
+                return False
+            
             raise HTTPException(status_code= resp.status_code, detail= resp.json())
         
         return resp.json()
