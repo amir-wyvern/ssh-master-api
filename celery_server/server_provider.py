@@ -88,15 +88,15 @@ class VPS4:
                 'period': 1,
                 'promocode':'' 
             } 
-            # 'Turkiye-Istanbul': {
-            #     'tarif': 13,
-            #     'datacenter': 63,
-            #     'ostempl': 25,
-            #     'recipe': '',
-            #     'count': 1,
-            #     'period': 1,
-            #     'promocode':'' 
-            # }
+            'Turkiye-Istanbul': {
+                'tarif': 13,
+                'datacenter': 63,
+                'ostempl': 25,
+                'recipe': '',
+                'count': 1,
+                'period': 1,
+                'promocode':'' 
+            }
         }
 
     def buy_server(self, server_name):
