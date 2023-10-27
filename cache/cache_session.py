@@ -27,7 +27,7 @@ def set_server_number(number: int, db: redis.Redis):
     return db.set('servernumber', number)
 
 def set_server_proccessing(host: str, db: redis.Redis):
-    return db.set(f'server_proccessing:{host}', 'true', ex= 15*60)
+    return db.set(f'server_proccessing:{host}', 'true', ex= 30*60)
 
 def get_server_proccessing(host: str, db: redis.Redis):
     return db.get(f'server_proccessing:{host}')
