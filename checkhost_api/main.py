@@ -30,7 +30,7 @@ headers = {
 nodes = ['ir1.node.check-host.net', 'ir3.node.check-host.net', 'ir4.node.check-host.net', 'ir5.node.check-host.net', 'ir6.node.check-host.net']
 
 
-def check_host(host):
+def check_host(host, _try= 1):
 
     params = '&'.join([f'node={node}' for node in nodes])
     resp = requests.get(f'https://check-host.net/check-ping?host={host}&{params}', headers= headers)
@@ -43,7 +43,11 @@ def check_host(host):
     sleep(2)      
 
     status = request_id_worker(request_id)
-    return status
+    if status == False and _try >= 3:
+        return status
+
+    else:
+        check_host(host , _try= _try + 1)
 
 def request_id_worker(request_id):
 
@@ -70,7 +74,7 @@ def request_id_worker(request_id):
         if check_none_result is True:
             continue 
 
-        res_nodes = []
+
         health_status = True
         for node_result in result.json().values():
             if node_result[0] is not None:
@@ -79,5 +83,5 @@ def request_id_worker(request_id):
                 if not all(res):
                     health_status = False
                     break
-        
+
         return health_status
