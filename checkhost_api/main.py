@@ -43,15 +43,16 @@ def check_host(host, _try= 1):
     sleep(2)      
 
     status = request_id_worker(request_id)
-    
+
     if status == False:
         if _try >= 3:
             return status
     
         sleep(3)
-        check_host(host , _try= _try + 1)
+        status = check_host(host , _try= _try + 1)
 
-    return status
+    else:
+        return status
 
 
 def request_id_worker(request_id):
