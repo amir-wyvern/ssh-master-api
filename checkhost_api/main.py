@@ -71,14 +71,13 @@ def request_id_worker(request_id):
             continue 
 
         res_nodes = []
+        health_status = True
         for node_result in result.json().values():
             if node_result[0] is not None:
+                
                 res = [1 if (res and res[0] == 'OK') else 0 for res  in node_result[0] ]
-                if sum(res) >= len(node_result[0]) // 2:
-                    res_nodes.append(1)
+                if not all(res):
+                    health_status = False
+                    break
         
-        status = False
-        if sum(res_nodes) >= len(result.json()) // 2:
-            status = True
-
-        return status
+        return health_status
