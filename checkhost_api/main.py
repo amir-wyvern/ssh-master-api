@@ -45,12 +45,13 @@ def check_host(host, _try= 1):
     status = request_id_worker(request_id)
 
     if status == False:
-        if _try >= 3:
+        if _try >= 3:   
             return status
     
         sleep(3)
         status = check_host(host , _try= _try + 1)
-
+        return status
+    
     else:
         return status
 
@@ -69,8 +70,9 @@ def request_id_worker(request_id):
             if result.status_code != 200:
                 logger.error(f'failed in send requests to get result of check host (request_id: {request_id} -err_status: {result.status_code} -err_msg: {result.content})')
                 raise HTTPException(status_code= result.status_code, detail={'internal_code': 5102, 'detail': f'check-result (error: {result.content})'})
-
+            
             check_none_result = any([item is None for item in result.json().values()])
+            
             if check_none_result is True:
                 sleep(2)
                 continue 
@@ -83,11 +85,13 @@ def request_id_worker(request_id):
 
         health_status = True
         for node_result in result.json().values():
+            
             if node_result[0] is not None:
                 
                 res = [1 if (res and res[0] == 'OK') else 0 for res  in node_result[0] ]
+                
                 if not all(res):
                     health_status = False
                     break
-
+        
         return health_status
