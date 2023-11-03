@@ -79,24 +79,33 @@ class VPS4:
         }
 
         self.server_lib = {
-            'Turkiye-Izmir':{            
+           'Netherlands': {
                 'tarif': 13,
-                'datacenter': 53,
+                'datacenter': 5,
                 'ostempl': 25,
                 'recipe': '',
                 'count': 1,
                 'period': 1,
-                'promocode':'' 
-            } ,
-            'Turkiye-Istanbul': {
-                'tarif': 13,
-                'datacenter': 63,
-                'ostempl': 25,
-                'recipe': '',
-                'count': 1,
-                'period': 1,
-                'promocode':'' 
-            }
+                'promocode':''
+            } 
+            # 'Turkiye-Izmir':{            
+            #     'tarif': 13,
+            #     'datacenter': 53,
+            #     'ostempl': 25,
+            #     'recipe': '',
+            #     'count': 1,
+            #     'period': 1,
+            #     'promocode':'' 
+            # } ,
+            # 'Turkiye-Istanbul': {
+            #     'tarif': 13,
+            #     'datacenter': 63,
+            #     'ostempl': 25,
+            #     'recipe': '',
+            #     'count': 1,
+            #     'period': 1,
+            #     'promocode':'' 
+            # }
         }
 
     def buy_server(self, server_name):

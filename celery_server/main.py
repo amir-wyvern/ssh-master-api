@@ -200,7 +200,7 @@ class MainApi:
 
         if resp.status_code != 200:
             logger.error(f'(submit_new_server) failed to submit new server (ip: {server_ip} -err_status: {resp.status_code} -err_msg: {resp.content})')
-            if resp.status_code == 409 and hasattr(resp, 'json') and 'internal_code' in resp.json():
+            if resp.status_code == 409 and hasattr(resp, 'json') and 'internal_code' in resp.json()['detail']:
                 return False
             
             raise HTTPException(status_code= resp.status_code, detail= resp.json())
