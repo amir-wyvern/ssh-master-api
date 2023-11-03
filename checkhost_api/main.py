@@ -45,7 +45,7 @@ def check_host(host, _try= 1):
     status = request_id_worker(request_id)
 
     if status == False:
-        if _try >= 3:   
+        if _try >= 10:   
             return status
     
         sleep(3)
