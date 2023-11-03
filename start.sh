@@ -44,5 +44,5 @@ fi
 # check-servers
 tmux new-session -d -s check-servers
 tmux split-window -v -t check-servers
-tmux send-keys -t check-servers:0.0 'cd /root/ssh-slave-api;celery -A celery_server.main worker --concurrency=4 --loglevel=info -n server_service_worker.%h' Enter
-tmux send-keys -t check-servers:0.1 'cd /root/ssh-slave-api;python extensions/server_check/main.py' Enter
+tmux send-keys -t check-servers:0.0 'cd /root/ssh-master-api;source venv/bin/activate;celery -A celery_server.main worker --concurrency=4 --loglevel=info -n server_service_worker.%h' Enter
+tmux send-keys -t check-servers:0.1 'cd /root/ssh-master-api;source venv/bin/activate;python extensions/server_check/main.py' Enter
