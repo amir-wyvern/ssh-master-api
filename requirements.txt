@@ -38,7 +38,7 @@ PyNaCl==1.5.0
 python-dotenv==1.0.0
 python-jose==3.3.0
 python-multipart==0.0.6
-python-telegram-bot==11.1.0
+python-telegram-bot==11
 pytz==2023.3
 PyYAML==6.0
 redis==4.5.4
@@ -58,3 +58,4 @@ vine==5.0.0
 watchfiles==0.18.1
 wcwidth==0.2.6
 websockets==10.4
+rdbtools==0.1.15
