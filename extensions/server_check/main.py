@@ -107,6 +107,13 @@ class CheckHosts:
                         }
                         replace_server_worker.apply_async(args=(payload,))
 
+                        payload = {
+                            'parse_mode': 'markdown',
+                            'bot_selector': 'admin_log',
+                            'chat_id': 'admin',
+                            'message': 'The Server [`{0}`] is filtered'.format(server['server_ip'])
+                        }
+                        notifocaction_worker.apply_async(args=(payload,))
                     sleep(2)
 
             except Exception as e:
