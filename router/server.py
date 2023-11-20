@@ -31,6 +31,7 @@ from schemas import (
     ActiveUsersDetail,
     NodesStatusResponse,
     NodesCommand,
+    SourceUsersServer,
     NodesCommandResponse
 )
 from db.database import get_db
@@ -389,19 +390,42 @@ def get_nodes_status( current_user: TokenUser= Depends(get_admin_user), db: Sess
 
 
 @router.get('/users', response_model= UsersResponse, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
-def get_server_users(server_ip: str ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def get_server_users(server_ip: str, source: SourceUsersServer= SourceUsersServer.DATABASE ,current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
-    server = db_server.get_server_by_ip(server_ip, db)
+    if source == SourceUsersServer.DATABASE:
 
-    if server is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
-    
-    resp, err = get_users(server_ip)
-    if err:
-        logger.error(f'[get users] error (server_ip: {server_ip}) -detail: {err.detail})')
-        raise err
-    
-    return UsersResponse(result= resp, count= len(resp))
+        domains = db_domain.get_domains_by_server_ip(server_ip, db)
+
+        users = []
+
+        for domain in domains:
+
+            user_domains = []
+
+            user_domain_enable = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.ENABLE)
+            cl_enables = [user.username for user in user_domain_enable]
+
+            user_domain_expire = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.EXPIRED)
+            cl_expires = [user.username for user in user_domain_expire]
+
+            user_domains = cl_expires + cl_enables
+            users.extend(user_domains)
+
+        return UsersResponse(result= users, count= len(users))
+
+    elif source == SourceUsersServer.SLAVE_SERVER:
+
+        server = db_server.get_server_by_ip(server_ip, db)
+
+        if server is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'internal_code':2406, 'message':'Server not exists'})
+        
+        resp, err = get_users(server_ip)
+        if err:
+            logger.error(f'[get users] error (server_ip: {server_ip}) -detail: {err.detail})')
+            raise err
+        
+        return UsersResponse(result= resp, count= len(resp))
 
 
 @router.get('/best', response_model= BestServerForNewConfig, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}, status.HTTP_408_REQUEST_TIMEOUT:{'model':HTTPError}})
