@@ -11,7 +11,7 @@ else
     tmux send-keys -t master:0.0 'cd /root/ssh-master-api;python -m venv /root/ssh-master-api/venv;source venv/bin/activate;pip install -r requirements.txt;uvicorn main:app --host 0.0.0.0 --port 80' Enter
 fi
 
-tmux send-keys -t master:0.1 'cd /root/ssh-master-api;source venv/bin/activate;python extensions/check_service_time/check_expire.py' Enter
+tmux send-keys -t master:0.1 'cd /root/ssh-master-api;source venv/bin/activate;python schedule_service/check_expire.py' Enter
 
 
 # notif
@@ -53,7 +53,7 @@ fi
 # fi
 
 # check-servers
-tmux new-session -d -s check-servers
-tmux split-window -v -t check-servers
+# tmux new-session -d -s check-servers
+# tmux split-window -v -t check-servers
 # -- tmux send-keys -t check-servers:0.0 'cd /root/ssh-master-api;source venv/bin/activate;celery -A celery_server.main worker --concurrency=4 --loglevel=info -n server_service_worker.%h' Enter
-tmux send-keys -t check-servers:0.1 'cd /root/ssh-master-api;source venv/bin/activate;python extensions/server_check/main.py' Enter
+# tmux send-keys -t check-servers:0.1 'cd /root/ssh-master-api;source venv/bin/activate;python schedule_service/server_check/main.py' Enter
