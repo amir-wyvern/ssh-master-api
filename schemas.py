@@ -67,6 +67,10 @@ class UserStatusWithNone(str, Enum):
 
 # ============= Server =============
 
+class SalveToken(BaseModel):
+
+    token : str
+
 class ServerStatusDb(str, Enum):
 
     DISABLE= 'disable'
@@ -142,6 +146,11 @@ class UsersResponse(BaseModel):
 
     count: int
     result: List[str]
+
+class SourceUsersServer(str, Enum):
+
+    DATABASE = 'database'
+    SLAVE_SERVER = 'slave_server'
 
 class UpdateMaxUserServer(BaseModel):
     
