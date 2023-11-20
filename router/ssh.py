@@ -48,10 +48,9 @@ from slave_api.ssh import (
     block_ssh_account,
     unblock_ssh_account
 )
-
+from utils.port import generate_port
 from utils.password import generate_password
-from utils.server import find_best_server
-from utils.domain import get_domain_via_server, get_server_via_domain
+from utils.domain import get_server_via_domain
 from utils.financial import check_balance
 from utils.server import find_server_and_domain
 from financial_api.transfer import transfer 
@@ -77,7 +76,6 @@ logger.addHandler(console_handler)
 PERCENT_PARTNERSHIP_PROFIT = float(os.getenv('PERCENT_PARTNERSHIP_PROFIT'))
 ADMID_ID_FOR_FINANCIAL = 1 
 MAX_TEST_ACCOUNT = 3
-MAX_USER_DOMAIN = 10
 
 router = APIRouter(prefix='/agent/ssh', tags=['Ssh-Agent'])
 
@@ -174,7 +172,7 @@ def create_test_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(
         'username': username, 
         'password': password, 
         'host': selected_domain.domain_name,
-        'port': selected_server.ssh_port,
+        'port': generate_port(username),
     }
 
     set_test_account_cache(current_user.user_id, username, 24*60*60, get_redis_cache().__next__())
@@ -301,7 +299,7 @@ def create_new_ssh_via_agent(request: NewSsh, current_user: TokenUser= Depends(g
         'username': username, 
         'password': password, 
         'host': selected_domain.domain_name,
-        'port': selected_server.ssh_port,
+        'port': generate_port(username),
     }
 
     logger.info(f'[new ssh] the ssh account was created successfully (agent: {current_user.user_id} -username: {username} -server_ip: {selected_server.server_ip} -domain: {selected_domain.domain_name} -plan_id: {plan.plan_id})')
@@ -602,7 +600,7 @@ def renew_config(request: RenewSsh, current_user: TokenUser= Depends(get_agent_u
         'username': username, 
         'password': service.password, 
         'host': selected_domain.domain_name,
-        'port': selected_server.ssh_port,
+        'port': generate_port(username),
     }
     
     logger.info(f'[renew] renew config successfully Done (-username: {service.username} -old_domain: {old_domain.domain_name} -new_domain: {selected_domain.domain_name} -old_server: {old_domain.server_ip} -new_server: {selected_server.server_ip}')
