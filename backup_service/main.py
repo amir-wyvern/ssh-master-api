@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append('../')
+
 from celery_tasks.utils import create_worker_from
 from celery_tasks.tasks import NotificationCeleryTask
 from telegram import Bot
