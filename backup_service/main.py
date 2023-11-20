@@ -4,12 +4,16 @@ sys.path.append('../')
 
 from celery_tasks.utils import create_worker_from
 from celery_tasks.tasks import NotificationCeleryTask
+from dotenv import load_dotenv
 from telegram import Bot
 from time import sleep
 import subprocess
 import hashlib
 import logging
 import os
+
+load_dotenv()
+
 # Create a file handler to save logs to a file
 logger = logging.getLogger('backup.log') 
 logger.setLevel(logging.INFO)
