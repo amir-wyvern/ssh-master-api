@@ -72,12 +72,17 @@ if ch_user is None:
         total_profit= 0,
         number_of_configs= 0), db)
 
+CURRENT_DOMAIN = os.getenv('CURRENT_DOMAIN')
+
+if not CURRENT_DOMAIN :
+    root_logger.error('there is no valid domain')
+    exit(0)
 
 if get_last_domain(get_redis_cache().__next__()) is None:
 
     last_domain_obj = db_domain.get_last_domain(db)
     if last_domain_obj is None:
-        last_domain = 'm1.abc-cluster.online'
+        last_domain = f'z1.{CURRENT_DOMAIN}' 
     
     else:
         last_domain = last_domain_obj.domain_name
