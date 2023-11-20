@@ -16,8 +16,9 @@ from schemas import (
     ServiceStatusDb,
     SearchResponse
 )
-from db import db_ssh_service, db_domain, db_user, db_ssh_plan, db_server
+from db import db_ssh_service, db_domain, db_user, db_ssh_plan
 from db.database import get_db
+from utils.port import generate_port
 from auth.auth import get_agent_user
 from datetime import datetime
 import logging
@@ -126,7 +127,6 @@ def get_services_by_search(
 
     for refrence_service in resp_services:
         domain_name_service = db_domain.get_domain_by_id(refrence_service.domain_id, db)
-        service_ip = db_server.get_server_by_ip(domain_name_service.server_ip, db)
         prepar_services.append(
             {
                 'service_id': refrence_service.service_id,
@@ -134,7 +134,7 @@ def get_services_by_search(
                 'domain_id': refrence_service.domain_id,
                 'domain_name': domain_name_service.domain_name,
                 'server_ip': domain_name_service.server_ip,
-                'ssh_port': service_ip.ssh_port,
+                'ssh_port': generate_port(refrence_service.username),
                 'plan_id': refrence_service.plan_id,
                 'name': refrence_service.name,
                 'email': refrence_service.email,
