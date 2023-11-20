@@ -4,9 +4,11 @@ from fastapi import Depends, HTTPException, status, APIRouter
 from fastapi.security import OAuth2PasswordRequestForm
 from db import db_user
 from db.database import get_db
-from schemas import Token, UserRole, UserStatusDb
+from schemas import Token, UserRole, UserStatusDb, SalveToken, HTTPError, TokenUser
 from auth.auth import authenticate_user, create_access_token
+from auth.auth import get_admin_user
 import logging
+import os
 
 # Create a file handler to save logs to a file
 logger = logging.getLogger('auth_router.log') 
@@ -68,3 +70,11 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+
+@router.get('/slave_token', response_model= SalveToken, responses={status.HTTP_404_NOT_FOUND:{'model':HTTPError}})
+def update_server_max_users(current_user: TokenUser= Depends(get_admin_user)):
+
+    token = os.getenv('SLAVE_TOKEN')
+    return SalveToken(token= token)
