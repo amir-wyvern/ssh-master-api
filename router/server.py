@@ -457,7 +457,9 @@ def get_active_users(server_ip: str= Query(None) ,current_user: TokenUser= Depen
         number_active_users = len(resp)
         number_active_sessions = sum([item['count'] for item in resp])
 
-        return ActiveUsersDetail(ip= server_ip, detail= resp, active_users= number_active_users, active_sessions= number_active_sessions)
+        server_detail = ActiveUsersDetail(ip= server_ip, detail= resp, active_users= number_active_users, active_sessions= number_active_sessions)
+
+        return ActiveUsersResponse(total_active_users= number_active_users, total_sessions= number_active_sessions, detail= [server_detail])
 
     else:
 
