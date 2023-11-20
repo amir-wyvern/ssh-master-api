@@ -18,8 +18,10 @@ from cache.database import get_redis_cache
 
 import logging
 import re
+import os
 
-MAX_USER_NUMBER_IN_DOMAIN = 10
+CURRENT_DOMAIN = os.getenv('CURRENT_DOMAIN')
+MAX_USER_NUMBER_IN_DOMAIN = 5
 
 def register_domain_in_cloudflare(server_ip: str, db: Session, logger: logging.Logger) -> DbDomain:
 
@@ -121,6 +123,7 @@ def generate_subdomain(counter):
     number_part = matches.group(2)
     new_number_part = int(number_part) + counter
     new_sub = f'{text_part}{new_number_part}'
-    new_domain = f'{new_sub}.abc-cluster.online'
+    new_domain = f'{new_sub}.{CURRENT_DOMAIN}'
 
     return new_domain
+
