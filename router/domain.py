@@ -46,8 +46,9 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s')
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-router = APIRouter(prefix='/domain', tags=['Domain'])
+REGEX_URL = r"^[a-zA-Z]\d+\.[a-zA-Z]+-cluster\.online$"
 
+router = APIRouter(prefix='/domain', tags=['Domain'])
 
 @router.post('/new', response_model= NewDomainResponse, responses={status.HTTP_409_CONFLICT:{'model':HTTPError}})
 def add_new_domain(request: DomainRegister, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
@@ -57,8 +58,8 @@ def add_new_domain(request: DomainRegister, current_user: TokenUser= Depends(get
     if domain != None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'domain already exists', 'internal_code': 2447})
 
-    if not re.match(r"^(?:[a-zA-Z0-9\-]+\.)*abc-cluster\.online$", request.domain_name):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'regex domain is wrong ,right format is [xxx.abc-cluster.online]', 'internal_code': 2460})
+    if not re.match(REGEX_URL, request.domain_name):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'regex domain is wrong ,right format is [xxx.xxx-cluster.online]', 'internal_code': 2460})
 
     server = db_server.get_server_by_ip(request.server_ip, db)
     if server is None:
@@ -139,7 +140,7 @@ def update_server_max_users(request: UpdateServerInDomain ,current_user: TokenUs
     if domain is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND ,detail={'message': 'Domain not exists', 'internal_code': 2449})
     
-    if not re.match(r"^(?:[a-zA-Z0-9\-]+\.)*abc-cluster\.online$", request.domain_name):
+    if not re.match(REGEX_URL, request.domain_name):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT ,detail={'message': 'regex domain is wrong ,right format is [xxx.abc-cluster.online]', 'internal_code': 2460})
 
 
