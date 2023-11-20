@@ -20,8 +20,8 @@ from schemas import (
     UsersResponse,
     BestServerForNewConfig,
     UpdateNodesResponse,
-    ServerTransfer,
     AutoServerTransfer,
+    ServerTransfer,
     NewServerResponse,
     ServerTransferResponse,
     AutoTransferServerResponse,
@@ -113,7 +113,7 @@ def add_new_server(request: NewServer, deploy_slave: DeployStatus = DeployStatus
             ssh_client.connect(request.server_ip, username= 'root', password=request.root_password, port= 22, timeout= 20*60)
             
             for command in commands:
-
+   
                 logger.info(f'[new server] excuting command (server_ip: {request.server_ip} -command: "{command}")')
 
                 stdin, stdout, stderr = ssh_client.exec_command(command)
@@ -509,7 +509,7 @@ def update_server_max_users(request: UpdateMaxUserServer ,current_user: TokenUse
     status.HTTP_500_INTERNAL_SERVER_ERROR:{'model': HTTPError},
     status.HTTP_408_REQUEST_TIMEOUT:{'model': HTTPError},
     status.HTTP_409_CONFLICT:{'model':HTTPError}})
-def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
+def transfer_configs_via_server(request: ServerTransfer, update_domains: ServiceStatusDb = ServiceStatusDb.ENABLE, current_user: TokenUser= Depends(get_admin_user), db: Session=Depends(get_db)):
 
     old_server = db_server.get_server_by_ip(request.old_server_ip, db)
     if old_server is None:
@@ -576,14 +576,18 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
         logger.info(f'[transfer users] (delete) ssh group account was successfully (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -resp: {resp_del})')
         success_users = list( set(success_users) | set(resp_del['success_users'])) 
 
+    updated_domains = []
+    if update_domains == ServerStatusDb.ENABLE:
 
-    for index, domain in enumerate(old_server_domains):
-        _, err = update_subdomain(domain.identifier, request.new_server_ip, domain.domain_name.split('.')[0])
-        if err:
-            not_updated_domains = [i.domain_name for i in old_server_domains[index:]]
-            logger.error(f'[transfer server] (domain) failed to update cloudflare records (domain: {domain.domain_name} -new_server: {request.new_server_ip} -not_updated_domains: {not_updated_domains} -err_code: {err.status_code} -err_resp: {err.detail})')
-            raise err
-
+        for index, domain in enumerate(old_server_domains):
+            _, err = update_subdomain(domain.identifier, request.new_server_ip, domain.domain_name.split('.')[0])
+            if err:
+                not_updated_domains = [i.domain_name for i in old_server_domains[index:]]
+                logger.error(f'[transfer server] (domain) failed to update cloudflare records (domain: {domain.domain_name} -new_server: {request.new_server_ip} -not_updated_domains: {not_updated_domains} -err_code: {err.status_code} -err_resp: {err.detail})')
+                raise err
+            
+        updated_domains.append(domain.domain_name)
+        
         db_domain.update_server_ip(domain.domain_id, request.new_server_ip, db)
         logger.info(f'[transfer server] (domain) successfully updated domain (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -domain: {domain.domain_name})')
     
@@ -597,14 +601,13 @@ def transfer_configs_via_server(request: ServerTransfer, current_user: TokenUser
 
     db_server.increase_ssh_accounts_number(request.new_server_ip, db, number= len(resp_create['success_users']) )
 
-    domains = [domain.domain_name for domain in old_server_domains]
-    logger.info(f'[transfer server] successfully transfer server (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -updated_domains: {domains})')
+    logger.info(f'[transfer server] successfully transfer server (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -updated_domains: {updated_domains})')
 
     return ServerTransferResponse(
         from_server= request.old_server_ip,
         to_server= request.new_server_ip,
         success_users= success_users,
-        domains_updated= domains,
+        domains_updated= updated_domains,
         create_exists_users= resp_create['exists_users'],
         block_not_exists_users= resp_block['not_exists_users'],
         delete_not_exists_users= resp_del['not_exists_users']
