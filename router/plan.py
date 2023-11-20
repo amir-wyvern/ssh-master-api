@@ -16,7 +16,6 @@ from schemas import (
     NewSshPlanResponse
 )
 from db import db_ssh_plan
-from typing import List
 from db.database import get_db
 from auth.auth import get_admin_user, get_agent_user
 import logging
