@@ -3,7 +3,6 @@
 # master
 tmux new-session -d -s master
 tmux split-window -v -t master
-tmux split-window -v -t master
 
 if [ -d "/root/ssh-master-api/venv" ]; then
     tmux send-keys -t master:0.0 'cd /root/ssh-master-api;source venv/bin/activate;uvicorn main:app --host 0.0.0.0 --port 80' Enter
@@ -20,7 +19,8 @@ tmux send-keys -t notif 'cd /root/ssh-master-api;source venv/bin/activate;celery
 
 
 # backup
-tmux send-keys -t master:0.1 'cd /root/ssh-master-api;source venv/bin/activate;python backup_service/main.py' Enter
+tmux new-session -d -s backup
+tmux send-keys -t backup 'cd /root/ssh-master-api;source venv/bin/activate;python backup_service/main.py' Enter
 
 
 # financial
@@ -37,7 +37,7 @@ tmux send-keys -t financial:0.1 'cd /root/financial-vpn-api;source venv/bin/acti
 
 # telegram
 tmux new-session -d -s telegram
-if [ -d "/root/financial-vpn-api/venv" ]; then
+if [ -d "/root/telegram-client-vpn/venv" ]; then
     tmux send-keys -t telegram 'cd /root/telegram-client-vpn;source venv/bin/activate;python main.py' Enter
 else
     tmux send-keys -t telegram 'cd /root/telegram-client-vpn;python -m venv /root/financial-vpn-api/venv;pip install -r requirements.txt;python main.py' Enter
