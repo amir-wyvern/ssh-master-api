@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 import requests
 import os
 
+CURRENT_DOMAIN = os.getenv('CURRENT_DOMAIN')
 
 def header():
 
@@ -61,7 +62,7 @@ def update_subdomain(identifier, server_ip, new_sub_name):
 
     data = {
         'content': server_ip,
-        'name': f'{new_sub_name}.abc-cluster.online',
+        'name': f'{new_sub_name}.{CURRENT_DOMAIN}',
         'proxied': False,
         'type': 'A',
         'comment': '',
