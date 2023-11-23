@@ -134,7 +134,7 @@ class SyncServer:
         
         for _ in range(3):
             
-            resp = requests.post(f'http://{server_ip}/' + 'ssh/create', json= data, headers= self.slave_header)
+            resp = requests.post(f'http://{server_ip}:8090/' + 'ssh/create', json= data, headers= self.slave_header)
             
             if resp.status_code == 200:
                 break
@@ -153,7 +153,7 @@ class SyncServer:
         
         for _ in range(3):
             
-            resp = requests.post(f'http://{server_ip}/' + 'ssh/delete', json= data, headers= self.slave_header)
+            resp = requests.post(f'http://{server_ip}:8090/' + 'ssh/delete', json= data, headers= self.slave_header)
             
             if resp.status_code == 200:
                 break
