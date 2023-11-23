@@ -26,6 +26,9 @@ def create_ssh_account(server_ip, username, password, ignore_exists_users= False
                 break
 
         if resp.status_code != 200:
+            if hasattr(resp, 'json') and 'detail' in resp.json():
+                return None, HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+            
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
 
         return resp.json(), None
@@ -57,6 +60,9 @@ def create_ssh_account_via_group(server_ip, users: list, ignore_exists_users= Fa
                 break
 
         if resp.status_code != 200:
+            if hasattr(resp, 'json') and 'detail' in resp.json():
+                return None, HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+            
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
@@ -87,6 +93,9 @@ def delete_ssh_account(server_ip, username, ignore_not_exists_users= False):
                 break
 
         if resp.status_code != 200:
+            if hasattr(resp, 'json') and 'detail' in resp.json():
+                return None, HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+            
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
@@ -117,6 +126,9 @@ def delete_ssh_account_via_group(server_ip, users, ignore_not_exists_users= Fals
                 break
 
         if resp.status_code != 200:
+            if hasattr(resp, 'json') and 'detail' in resp.json():
+                return None, HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+            
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
@@ -149,6 +161,9 @@ def block_ssh_account(server_ip, username, ignore_not_exists_users= False):
                 break
 
         if resp.status_code != 200:
+            if hasattr(resp, 'json') and 'detail' in resp.json():
+                return None, HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+            
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
@@ -179,6 +194,9 @@ def block_ssh_account_via_groups(server_ip, users, ignore_not_exists_users= Fals
                 break
         
         if resp.status_code != 200:
+            if hasattr(resp, 'json') and 'detail' in resp.json():
+                return None, HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+            
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
@@ -210,6 +228,9 @@ def unblock_ssh_account(server_ip, username, ignore_not_exists_users= False):
                 break
 
         if resp.status_code != 200:
+            if hasattr(resp, 'json') and 'detail' in resp.json():
+                return None, HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+            
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
@@ -240,6 +261,9 @@ def unblock_ssh_account_via_groups(server_ip, users, ignore_not_exists_users= Fa
                 break
 
         if resp.status_code != 200:
+            if hasattr(resp, 'json') and 'detail' in resp.json():
+                return None, HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+            
             return None, HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
         
         return resp.json(), None
