@@ -17,6 +17,10 @@ tmux send-keys -t master:0.1 'cd /root/ssh-master-api;source venv/bin/activate;p
 tmux new-session -d -s notif
 tmux send-keys -t notif 'cd /root/ssh-master-api;source venv/bin/activate;celery -A celery_notification.main worker --concurrency=4 --loglevel=info -n notification_worker.%h' Enter
 
+# sync
+tmux new-session -d -s sync
+tmux send-keys -t sync 'cd /root/ssh-master-api;source venv/bin/activate;python extensions/sync_servers/server.py' Enter
+
 
 # backup
 tmux new-session -d -s backup
