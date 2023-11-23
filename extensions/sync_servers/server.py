@@ -11,10 +11,10 @@ import requests
 import logging
 import os
 
-logger = logging.getLogger('server_check.log') 
+logger = logging.getLogger('sync_server.log') 
 logger.setLevel(logging.INFO)
 
-file_handler = logging.FileHandler('server_check.log') 
+file_handler = logging.FileHandler('sync_server.log') 
 file_handler.setLevel(logging.INFO) 
 formatter = logging.Formatter('%(asctime)s - %(levelname)s | %(message)s') 
 file_handler.setFormatter(formatter) 
@@ -48,14 +48,14 @@ class SyncServer:
 
         if resp.status_code != 200:
             logger.error(f'username or password is wrong (err_code: {resp.status_code} -err_resp: {resp.content})')
-            raise 'Username or Password is Wrong'
+            raise HTTPException(status_code= 403, detail='Username or Password is Wrong')
         
         self.headers = {
             'accept': 'application/json',
             'Authorization': 'Bearer {0}'.format(resp.json()['access_token'])
         }
 
-        slave_token_resp = requests.get(self.url + 'auth/slave_token', headers= headers)
+        slave_token_resp = requests.get(self.url + 'auth/slave_token', headers= self.headers)
 
         if slave_token_resp.status_code != 200:
             logger.error(f'error while getting slave token (err_code: {resp.status_code} -err_resp: {resp.content})')
@@ -64,7 +64,7 @@ class SyncServer:
         self.slave_header = {
             'accept': 'application/json',
             'Content-Type': 'application/x-www-form-urlencoded',
-            'token': slave_token_resp['token']
+            'token': slave_token_resp.json()['token']
         }
 
         logger.info('Successfully Connect.')
@@ -217,6 +217,7 @@ class SyncServer:
 
                     create_users = set(database_users) - set(server_users)  
                     delete_users = set(server_users) - set(database_users)
+                    deleted_users_listed = [user for user in delete_users if user.startswith('user_')]
 
                     if create_users:
                         list_create_users = []
@@ -230,9 +231,8 @@ class SyncServer:
 
                         self.create_users(server['server_ip'], list_create_users)
 
-                    if delete_users:
-
-                        self.delete_users(server['server_ip'], delete_users)
+                    if deleted_users_listed:
+                        self.delete_users(server['server_ip'], deleted_users_listed)
 
 
             except Exception as e:
