@@ -857,6 +857,7 @@ class PublishNotification(BaseModel):
     parse_mode: bool = False
     except_agents: Optional[List[str]]
     accept_agents: Optional[List[str]]
+    bot: Optional[str]
 
 class PublishNotificationResponse(BaseModel):
 

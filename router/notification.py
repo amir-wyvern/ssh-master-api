@@ -49,6 +49,7 @@ def new_notif(request: PublishNotification, current_user: TokenUser= Depends(get
     failed_users = []
     list_chat_id = []
     except_agents = request.except_agents
+    
     if request.except_agents is None:
         except_agents = []
     
@@ -77,7 +78,10 @@ def new_notif(request: PublishNotification, current_user: TokenUser= Depends(get
                 else: 
                     failed_users.append(user.chat_id)
 
-    
+    bot = 'vpn_cluster'
+    if request.bot :
+        bot = request.bot
+
     for user_chat_id in list_chat_id:
         parse_mode = None
         if request.parse_mode:
@@ -86,7 +90,7 @@ def new_notif(request: PublishNotification, current_user: TokenUser= Depends(get
         payload = {
             'chat_id': user_chat_id,
             'message': request.message,
-            'bot_selector': 'vpn_cluster',
+            'bot_selector': bot,
             'parse_mode': parse_mode,
             'inline_keyboard': [[['👍 مشاهده کردم', 'notif_click']]]
         }
