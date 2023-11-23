@@ -59,7 +59,7 @@ class SyncServer:
 
         if slave_token_resp.status_code != 200:
             logger.error(f'error while getting slave token (err_code: {resp.status_code} -err_resp: {resp.content})')
-            raise 'error while getting slave token'
+            raise HTTPException(status_code= 409, detail='error while getting slave token')
         
         self.slave_header = {
             'accept': 'application/json',
