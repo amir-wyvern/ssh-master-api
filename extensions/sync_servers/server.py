@@ -9,6 +9,7 @@ from time import sleep
 import traceback
 import requests
 import logging
+import json
 import os
 
 logger = logging.getLogger('sync_server.log') 
@@ -153,7 +154,7 @@ class SyncServer:
         
         for _ in range(3):
             
-            resp = requests.delete(f'http://{server_ip}:8090/' + 'ssh/delete', json= data, headers= self.slave_header)
+            resp = requests.delete(f'http://{server_ip}:8090/' + 'ssh/delete', json= json.dumps(data) , headers= self.slave_header)
             
             if resp.status_code == 200:
                 break
