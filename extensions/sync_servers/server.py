@@ -4,7 +4,6 @@ sys.path.append('/root/ssh-master-api')
 
 from fastapi import HTTPException
 from dotenv import load_dotenv
-from typing import Dict, List
 from time import sleep
 import traceback
 import requests
@@ -195,50 +194,22 @@ class SyncServer:
                                 'password': resp['result'][0]['password']
                             })
 
-                        data = {
-                            'ignore_exists_users': True,
-                            'users': list_create_users
-                        }
-
-                        for _ in range(2):
-                            resp = requests.post(url='http://{0}:8090/ssh/create'.format(server['server_ip']), json= data, headers= self.slave_header, timeout=20)
-                            if resp.status_code == 200:
-                                break
-
-                        if resp.status_code != 200:
-                            logger.error('error in creating users [server: {0} -error: {1}]'.format(server['server_ip'], resp.content ) ) 
-
-                            if hasattr(resp, 'json') and 'detail' in resp.json():
-                                raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
-                            
-                            raise HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
+                        resp, err = create_ssh_account_via_group(server['server_ip'], list_create_users)
+                        if err: 
+                            raise err
                         
-                        logger.info('successfuly creating users [server: {0} -resp: {1}]'.format(server['server_ip'], resp.json()))
+                        logger.info('successfuly creating users [server: {0} -resp: {1}]'.format(server['server_ip'], resp))
 
 
                     if deleted_users_listed:
 
                         logger.info('deleting users [server: {0} -users: {1}]'.format(server['server_ip'], deleted_users_listed))
 
-                        data = {
-                            'ignore_not_exists_users': True,
-                            'users': deleted_users_listed
-                        }
+                        resp ,err = delete_ssh_account_via_group(server['server_ip'], deleted_users_listed)
+                        if err:
+                            raise err
                         
-                        for _ in range(2):
-                            resp = requests.delete(url='http://{0}:8090/ssh/delete'.format(server['server_ip']), json= data, headers= self.slave_header, timeout=20)
-                            if resp.status_code == 200:
-                                break
-
-                        if resp.status_code != 200:
-                            logger.error('error in deleting users [server: {0} -error: {1}]'.format(server['server_ip'], resp.content ) ) 
-
-                            if hasattr(resp, 'json') and 'detail' in resp.json():
-                                raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
-                            
-                            raise HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
-                        
-                        logger.info('successfuly deleting users [server: {0} -resp: {1}]'.format(server['server_ip'], resp.json()))
+                        logger.info('successfuly deleting users [server: {0} -resp: {1}]'.format(server['server_ip'], resp))
 
             except Exception as e:
 
