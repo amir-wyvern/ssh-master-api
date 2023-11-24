@@ -46,7 +46,7 @@ class SyncServer:
         }
         self.url = url 
         resp = requests.post(self.url + 'auth/login', data= data, headers= headers)
-        resp.request.prepare_body()
+        
         if resp.status_code != 200:
             logger.error(f'username or password is wrong (err_code: {resp.status_code} -err_resp: {resp.content})')
             raise HTTPException(status_code= 403, detail='Username or Password is Wrong')
