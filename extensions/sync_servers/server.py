@@ -9,8 +9,8 @@ from time import sleep
 import traceback
 import requests
 import logging
-import json
 import os
+from slave_api.ssh import create_ssh_account_via_group, delete_ssh_account_via_group
 
 logger = logging.getLogger('sync_server.log') 
 logger.setLevel(logging.INFO)
@@ -46,7 +46,7 @@ class SyncServer:
         }
         self.url = url 
         resp = requests.post(self.url + 'auth/login', data= data, headers= headers)
-
+        resp.request.prepare_body()
         if resp.status_code != 200:
             logger.error(f'username or password is wrong (err_code: {resp.status_code} -err_resp: {resp.content})')
             raise HTTPException(status_code= 403, detail='Username or Password is Wrong')
@@ -154,7 +154,7 @@ class SyncServer:
         
         for _ in range(3):
             
-            resp = requests.delete(f'http://{server_ip}:8090/' + 'ssh/delete', json= json.dumps(data) , headers= self.slave_header)
+            resp = requests.delete(f'http://{server_ip}:8090/' + 'ssh/delete', json= data , headers= self.slave_header)
             
             if resp.status_code == 200:
                 break
@@ -230,10 +230,11 @@ class SyncServer:
                                 'password': resp['result'][0]['password']
                             })
 
-                        self.create_users(server['server_ip'], list_create_users)
+                        create_ssh_account_via_group(server['server_ip'], list_create_users)
 
                     if deleted_users_listed:
-                        self.delete_users(server['server_ip'], deleted_users_listed)
+
+                        delete_ssh_account_via_group(server['server_ip'], deleted_users_listed)
 
 
             except Exception as e:
