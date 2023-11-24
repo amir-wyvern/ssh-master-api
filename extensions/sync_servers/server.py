@@ -126,44 +126,6 @@ class SyncServer:
 
         return resp.json()['result']
     
-    def create_users(self, server_ip, list_users: Dict[str, str]):
-        
-        data = {
-            "ignore_exists_users": True,
-            "users": list_users
-        }
-        
-        for _ in range(3):
-            
-            resp = requests.post(f'http://{server_ip}:8090/' + 'ssh/create', json= data, headers= self.slave_header)
-            
-            if resp.status_code == 200:
-                break
-        
-        if resp.status_code != 200:
-            raise HTTPException(status_code= resp.status_code, detail={'internal_code': 5103, 'detail': f'cant create users (users: {list_users} -error: {resp.content})'})
-
-        return resp.json()
-    
-    def delete_users(self, server_ip, list_users: List[str]):
-        
-        data = {
-            "ignore_not_exists_users": True,
-            "users": list_users
-        }
-        
-        for _ in range(3):
-            
-            resp = requests.delete(f'http://{server_ip}:8090/' + 'ssh/delete', json= data , headers= self.slave_header)
-            
-            if resp.status_code == 200:
-                break
-        
-        if resp.status_code != 200:
-            raise HTTPException(status_code= resp.status_code, detail={'internal_code': 5103, 'detail': f'cant delete users (users: {list_users} -error: {resp.content})'})
-
-        return resp.json()
-    
     def user_detail(self, username):
 
         params = {
@@ -221,6 +183,9 @@ class SyncServer:
                     deleted_users_listed = [user for user in delete_users if user.startswith('user_')]
 
                     if create_users:
+
+                        logger.info('creating users [server: {0} -users: {1}]'.format(server['server_ip'], create_users))
+                        
                         list_create_users = []
                         
                         for user in create_users:
@@ -230,12 +195,50 @@ class SyncServer:
                                 'password': resp['result'][0]['password']
                             })
 
-                        create_ssh_account_via_group(server['server_ip'], list_create_users)
+                        data = {
+                            'ignore_exists_users': True,
+                            'users': list_create_users
+                        }
+
+                        for _ in range(2):
+                            resp = requests.post(url='http://{0}:8090/ssh/create'.format(server['server_ip']), json= data, headers= self.slave_header, timeout=20)
+                            if resp.status_code == 200:
+                                break
+
+                        if resp.status_code != 200:
+                            logger.error('error in creating users [server: {0} -error: {1}]'.format(server['server_ip'], resp.content ) ) 
+
+                            if hasattr(resp, 'json') and 'detail' in resp.json():
+                                raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+                            
+                            raise HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
+                        
+                        logger.info('successfuly creating users [server: {0} -resp: {1}]'.format(server['server_ip'], resp.json()))
+
 
                     if deleted_users_listed:
 
-                        delete_ssh_account_via_group(server['server_ip'], deleted_users_listed)
+                        logger.info('deleting users [server: {0} -users: {1}]'.format(server['server_ip'], deleted_users_listed))
 
+                        data = {
+                            'ignore_not_exists_users': True,
+                            'users': deleted_users_listed
+                        }
+                        
+                        for _ in range(2):
+                            resp = requests.delete(url='http://{0}:8090/ssh/delete'.format(server['server_ip']), json= data, headers= self.slave_header, timeout=20)
+                            if resp.status_code == 200:
+                                break
+
+                        if resp.status_code != 200:
+                            logger.error('error in deleting users [server: {0} -error: {1}]'.format(server['server_ip'], resp.content ) ) 
+
+                            if hasattr(resp, 'json') and 'detail' in resp.json():
+                                raise HTTPException(status_code=resp.status_code ,detail= resp.json()['detail'])
+                            
+                            raise HTTPException(status_code=resp.status_code ,detail= resp.content.decode())
+                        
+                        logger.info('successfuly deleting users [server: {0} -resp: {1}]'.format(server['server_ip'], resp.json()))
 
             except Exception as e:
 
