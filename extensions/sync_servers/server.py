@@ -194,7 +194,7 @@ class SyncServer:
                                 'password': resp['result'][0]['password']
                             })
 
-                        resp, err = create_ssh_account_via_group(server['server_ip'], list_create_users)
+                        resp, err = create_ssh_account_via_group(server['server_ip'], list_create_users, ignore_exists_users= True)
                         if err: 
                             raise err
                         
@@ -205,7 +205,7 @@ class SyncServer:
 
                         logger.info('deleting users [server: {0} -users: {1}]'.format(server['server_ip'], deleted_users_listed))
 
-                        resp ,err = delete_ssh_account_via_group(server['server_ip'], deleted_users_listed)
+                        resp ,err = delete_ssh_account_via_group(server['server_ip'], deleted_users_listed, ignore_not_exists_users= True)
                         if err:
                             raise err
                         
