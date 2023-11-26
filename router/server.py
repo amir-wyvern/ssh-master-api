@@ -408,7 +408,10 @@ def get_server_users(server_ip: str, source: SourceUsersServer= SourceUsersServe
             user_domain_expire = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.EXPIRED)
             cl_expires = [user.username for user in user_domain_expire]
 
-            user_domains = cl_expires + cl_enables
+            user_domain_disable = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.DISABLE)
+            cl_disables = [user.username for user in user_domain_disable]
+
+            user_domains = cl_expires + cl_enables + cl_disables
             users.extend(user_domains)
 
         return UsersResponse(result= users, count= len(users))
