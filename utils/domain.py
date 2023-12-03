@@ -67,20 +67,20 @@ def get_domain_via_server(server: BestServerForNewConfig, db: Session, logger: l
     
     min_domain_number = 100_000_00
     selected_domain = None
-
+    total_users_domains = 0
     for domain in domains_server:
         if domain.status == DomainStatusDb.ENABLE:
             
             enable_users_domain = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.ENABLE)
             disable_users_domain = db_ssh_service.get_services_by_domain_id(domain.domain_id, db, status= ServiceStatusDb.DISABLE)
-            total_users_domain = enable_users_domain + disable_users_domain
+            users_domain = enable_users_domain + disable_users_domain
+            total_users_domains += len(users_domain)
+            if len(users_domain) < MAX_USER_NUMBER_IN_DOMAIN and len(users_domain) < min_domain_number:
 
-            if len(total_users_domain) < MAX_USER_NUMBER_IN_DOMAIN and len(total_users_domain) < min_domain_number:
-
-                min_domain_number = len(total_users_domain)
+                min_domain_number = len(users_domain)
                 selected_domain = domain
 
-    if selected_domain is None and len(domains_server) * MAX_USER_NUMBER_IN_DOMAIN < server.max_users:
+    if selected_domain is None and len(total_users_domains) < server.max_users:
         
         selected_domain, err = register_domain_in_cloudflare(server.server_ip, db, logger)
         if err:
