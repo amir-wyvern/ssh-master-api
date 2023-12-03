@@ -4,10 +4,13 @@ def generate_port(username):
 
     if len(username.split('_')) == 1:
         number = 1
-        
-    else:
+    
+    elif username.split('_')[1].isdigit():
         number = int(username.split('_')[1])
     
+    else :
+        number = 1
+
     return available_ports[number % len(available_ports)]
 
 
