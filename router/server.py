@@ -583,16 +583,17 @@ def transfer_configs_via_server(request: ServerTransfer, update_domains: Service
     if update_domains == ServerStatusDb.ENABLE:
 
         for index, domain in enumerate(old_server_domains):
+
             _, err = update_subdomain(domain.identifier, request.new_server_ip, domain.domain_name.split('.')[0])
             if err:
                 not_updated_domains = [i.domain_name for i in old_server_domains[index:]]
                 logger.error(f'[transfer server] (domain) failed to update cloudflare records (domain: {domain.domain_name} -new_server: {request.new_server_ip} -not_updated_domains: {not_updated_domains} -err_code: {err.status_code} -err_resp: {err.detail})')
                 raise err
             
-        updated_domains.append(domain.domain_name)
-        
-        db_domain.update_server_ip(domain.domain_id, request.new_server_ip, db)
-        logger.info(f'[transfer server] (domain) successfully updated domain (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -domain: {domain.domain_name})')
+            updated_domains.append(domain.domain_name)
+            
+            db_domain.update_server_ip(domain.domain_id, request.new_server_ip, db)
+            logger.info(f'[transfer server] (domain) successfully updated domain (from_server_ip: {request.old_server_ip} -to_server_ip: {request.new_server_ip} -domain: {domain.domain_name})')
     
     
     if request.delete_old_users:
